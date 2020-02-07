@@ -14,8 +14,8 @@ const MAXSIZE = 1024
 
 const (
 	CONN_HOST = "localhost"
-	CONN_PORT = "3333"
-	CONN_TYPE = "tcp"
+	CONN_PORT = "3000"
+	CONN_TYPE = "udp"
 )
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	message := []byte("Connect")
+	message := []byte(`{"nickname":"playernickname","method":"init_udp"}\n`)
 	_, err = conn.Write(message)
 	if err != nil {
 		logger.Error(LC + "Error writing message: " + err.Error())

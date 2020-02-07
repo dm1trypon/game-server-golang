@@ -1,32 +1,30 @@
-package main
+package udpserver
 
 import (
 	"net"
+	"sync"
 	"time"
 
+	"github.com/dm1trypon/game-server-golang/protoworker"
 	"github.com/ivahaev/go-logger"
 )
 
-// LC - Logging category
-const LC = "[TCPServer] >> "
-
-// MAXSIZE - max size of byte's array
-const MAXSIZE = 1024
-
 const (
-	CONN_HOST = "localhost"
-	CONN_PORT = "3333"
-	CONN_TYPE = "tcp"
+	// LC - Logging category
+	LC = "[UDPServer] >> "
+	// MAXSIZE - max size of bytes message
+	MAXSIZE = 1024
+	// CONNTYPE - type of server's protocol
+	CONNTYPE = "udp"
 )
 
-var udpGameClients map[*net.UDPAddr]*net.UDPConn
-
 func sender() {
-	buf := []byte("Test message")
 	for {
-		for host, udpConn := range udpGameClients {
-			logger.Info(LC + "Sending message to game client " + host.String() + ": " + string(buf))
-			_, err := udpConn.WriteToUDP(buf, host)
+		udpGameClients := protoworker.GetUDPClients()
+		for udpNetData, udpConn := range udpGameClients {
+			buf := protoworker.GetGameData()
+			logger.Info(LC + "SENT [" + udpNetData.Addr.String() + "]: " + string(buf))
+			_, err := udpConn.WriteToUDP(buf, udpNetData.Addr)
 			if err != nil {
 				logger.Error(LC + "Error writing message: " + err.Error())
 			}
@@ -34,51 +32,44 @@ func sender() {
 
 		time.Sleep(1 * time.Second)
 	}
-
 }
 
-func main() {
-	logger.SetLevel("Info")
-
-	udpGameClients = make(map[*net.UDPAddr]*net.UDPConn)
-
-	udpAddr, err := net.ResolveUDPAddr("udp4", CONN_HOST+":"+CONN_PORT)
+// Start method starts UDP server
+func Start(path string) error {
+	udpAddr, err := net.ResolveUDPAddr("udp4", path)
 	if err != nil {
 		logger.Error(LC + "Error resolving: " + err.Error())
-		return
+		return err
 	}
-
-	logger.Notice(LC + "UDP game server has been resolved on " + CONN_HOST + ":" + CONN_PORT)
 
 	udpConn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		logger.Error(LC + "Error listening: " + err.Error())
-		return
+		return err
 	}
 	defer udpConn.Close()
 
-	logger.Notice(LC + "UDP game server has been started on " + CONN_HOST + ":" + CONN_PORT)
+	logger.Notice(LC + "UDP game server has been started on " + path)
 
-	go sender()
+	var wgSender sync.WaitGroup
+	go func() {
+		sender()
+		wgSender.Add(1)
+	}()
+	wgSender.Wait()
 
 	for {
 		buf := make([]byte, MAXSIZE)
-		n, host, err := udpConn.ReadFromUDP(buf)
+
+		_, addr, err := udpConn.ReadFromUDP(buf)
 		if err != nil {
 			logger.Warn(LC + "Error reading message: " + err.Error())
 			continue
 		}
 
-		logger.Info(LC + "Incomming message from game client: " + string(buf[:n]))
-
-		if _, ok := udpGameClients[host]; ok != true {
-			udpGameClients[host] = udpConn
-		}
-
-		_, err = udpConn.WriteToUDP(buf, host)
-		if err != nil {
-			logger.Error(LC + "Error writing message: " + err.Error())
-		}
+		logger.Info(LC + "RECV [" + addr.String() + "]: " + string(buf))
+		logger.Info(LC + "SENT [" + addr.String() + "]: " + string(protoworker.OnUDPMessage(buf, addr, udpConn)))
 	}
 
+	return nil
 }

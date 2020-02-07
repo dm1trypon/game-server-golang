@@ -1,10 +1,11 @@
 package base
 
 import (
-	"github.com/dm1trypon/backend/game-server-golang/models/protocol/bullet"
-	"github.com/dm1trypon/backend/game-server-golang/models/protocol/effect"
-	"github.com/dm1trypon/backend/game-server-golang/models/protocol/player"
-	"github.com/dm1trypon/backend/game-server-golang/models/protocol/scene"
+	"github.com/dm1trypon/game-server-golang/models/protocol/block"
+	"github.com/dm1trypon/game-server-golang/models/protocol/bullet"
+	"github.com/dm1trypon/game-server-golang/models/protocol/effect"
+	"github.com/dm1trypon/game-server-golang/models/protocol/player"
+	"github.com/dm1trypon/game-server-golang/models/protocol/scene"
 )
 
 // Base game protocol

@@ -1,80 +1,71 @@
 package tcpserver
 
 import (
+	"bufio"
 	"net"
+	"sync"
 
+	"github.com/dm1trypon/game-server-golang/protoworker"
 	"github.com/ivahaev/go-logger"
 )
 
 const (
 	// LC - Logging category
 	LC = "[TCPServer] >> "
-	// MAXSIZE - max size of bytes message
-	MAXSIZE = 1024
 	// CONNTYPE - type of server's protocol
 	CONNTYPE = "tcp"
 )
 
-var tcpGameClients map[string]net.Conn
-
 // Start method starts TCP server
 func Start(path string) error {
-	tcpGameClients = make(map[string]net.Conn)
-
-	l, err := net.Listen(CONNTYPE, path)
+	listener, err := net.Listen(CONNTYPE, path)
 	if err != nil {
 		logger.Error(LC + "Error listening: " + err.Error())
 		return err
 	}
-	defer l.Close()
+	defer listener.Close()
 
 	logger.Notice(LC + "TCP game server has been started on " + path)
 
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			logger.Error(LC + "Error accepting game client: " + err.Error())
-			return err
-		}
-
-		host := conn.RemoteAddr().String()
-
-		if _, ok := tcpGameClients[host]; ok != false {
-			logger.Warn(LC + "Game client " + host + " already connected")
-			continue
-		}
-
-		logger.Notice(LC + "Connected game client: " + host)
-		tcpGameClients[host] = conn
-
-		go handleRequest(conn)
-	}
+	loop(listener)
 
 	return nil
 }
 
+func loop(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			logger.Error(LC + "Error accepting game client: " + err.Error())
+			return
+		}
+
+		var wgReq sync.WaitGroup
+		go func() {
+			handleRequest(conn)
+			wgReq.Add(1)
+		}()
+		wgReq.Wait()
+	}
+}
+
 func handleRequest(conn net.Conn) {
 	for {
-		buf := make([]byte, MAXSIZE)
-		_, err := conn.Read(buf)
+		message, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
 			onDisconnected(conn)
 			break
 		}
 
-		logger.Info(LC + "Incomming message from host " + conn.RemoteAddr().String() + ": " + string(buf))
-		conn.Write(buf)
+		addr := conn.RemoteAddr()
+		logger.Info(LC + "RECV [" + addr.String() + "]: " + message)
+		data := string(protoworker.OnTCPMessage([]byte(message), addr, conn)) + "\n"
+		conn.Write([]byte(data))
 	}
 }
 
 func onDisconnected(conn net.Conn) {
-	host := conn.RemoteAddr().String()
-	if _, ok := tcpGameClients[host]; ok != true {
-		logger.Warn(LC + "Game client " + host + " already disconnected")
-		return
-	}
-
-	conn.Close()
-	delete(tcpGameClients, host)
-	logger.Notice(LC + "Disconnected game client: " + host)
+	conn.RemoteAddr()
+	data := string(protoworker.OnDisconnectPlayer(conn.RemoteAddr())) + "\n"
+	conn.Write([]byte(data))
 }

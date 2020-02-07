@@ -13,7 +13,7 @@
             "height": 30,
             "speed": 10,
             "weapon": "blaster",
-            "cartridges": 0,
+            "cartridges": -1,
             "health": 100,
             "armor": 0
         },

@@ -41,7 +41,8 @@ type Ammunition struct {
 type Cartridges struct {
 	Blaster int `json:"blaster"`
 	Plazma  int `json:"plazma"`
-	Sniper  int `json:"sniper"`
+	Minigun int `json:"minigun"`
+	Shotgun int `json:"shotgun"`
 }
 
 // GameStats of Player
@@ -56,16 +57,13 @@ type LifeStats struct {
 	Armor  int `json:"armor"`
 }
 
-// Effects of Player
-type Effects []Effect
-
 // Player - main struct
 type Player struct {
 	Nickname   string     `json:"nickname"`
 	Position   Position   `json:"position"`
 	Size       Size       `json:"size"`
 	Speed      Speed      `json:"speed"`
-	Effects    Effects    `json:"effects"`
+	Effects    []Effect   `json:"effects"`
 	Ammunition Ammunition `json:"ammunition"`
 	GameStats  GameStats  `json:"game_stats"`
 	LifeStats  LifeStats  `json:"life_stats"`

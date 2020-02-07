@@ -17,15 +17,22 @@ func main() {
 
 	for {
 		// Чтение входных данных от stdin
+		// reader := bufio.NewReader(os.Stdin)
+		// fmt.Print("Text to send: ")
+		// text, err := reader.ReadString('\n')
+		// if err != nil {
+		// 	fmt.Println("Error sending:" + err.Error())
+		// 	break
+		// }
+		// Отправляем в socket
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Text to send: ")
-		text, err := reader.ReadString('\n')
+		fmt.Print("Press")
+		_, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("Error sending:" + err.Error())
 			break
 		}
-		// Отправляем в socket
-		fmt.Fprintf(conn, text+"\n")
+		fmt.Fprintf(conn, `{"method":"init_tcp","nickname":"playernickname","resolution":{"width":1280,"height":720}}`+"\n")
 		// Прослушиваем ответ
 		message, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
@@ -33,5 +40,6 @@ func main() {
 			break
 		}
 		fmt.Print("Message from server: " + message)
+		// fmt.Fprintf(conn, `{"method":"disconnect","nickname":"playernickname"`+"\n")
 	}
 }
