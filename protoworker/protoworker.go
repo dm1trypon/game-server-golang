@@ -22,25 +22,22 @@ func OnTCPMessage(data []byte, addr net.Addr, conn net.Conn) []byte {
 
 	method := ""
 
-	reader := bytes.NewReader(data)
-	decoder := json.NewDecoder(reader)
-
-	err := decoder.Decode(&initTCP)
+	err := json.Unmarshal(data, &initTCP)
 	if err == nil {
 		method = initTCP.Method
 	}
 
-	err = decoder.Decode(&disconnect)
+	err = json.Unmarshal(data, &disconnect)
 	if err == nil {
 		method = disconnect.Method
 	}
 
-	err = decoder.Decode(&mouse)
+	err = json.Unmarshal(data, &mouse)
 	if err == nil {
 		method = mouse.Method
 	}
 
-	err = decoder.Decode(&keyboard)
+	err = json.Unmarshal(data, &keyboard)
 	if err == nil {
 		method = keyboard.Method
 	}
@@ -164,4 +161,9 @@ func toResponse(method string, message string, status bool) []byte {
 	}
 
 	return data
+}
+
+// OnFPS method call on next tick frame
+func OnFPS() {
+	engine.FPS()
 }

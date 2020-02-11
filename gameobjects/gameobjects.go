@@ -2,6 +2,7 @@ package gameobjects
 
 import (
 	"encoding/json"
+	"errors"
 	"math/rand"
 	"net"
 	"time"
@@ -41,6 +42,35 @@ var Bullets []bullet.Bullet
 var Blocks []block.Block
 var Scene scene.Scene
 var Base base.Base
+
+// GetPlayer method gets player's object by nickname
+func GetPlayer(nickname string) (player.Player, error) {
+	for _, player := range Players {
+		if player.Nickname == nickname {
+			return player, nil
+		}
+	}
+
+	textErr := "Player [Nickname: " + nickname + "] is not exist"
+	logger.Warn(LC + textErr)
+
+	return player.Player{}, errors.New(textErr)
+}
+
+// GetIndexPlayer method gets player's index nickname
+func GetIndexPlayer(nickname string) (int, error) {
+	for index, player := range Players {
+		if player.Nickname == nickname {
+			return index, nil
+		}
+	}
+
+	textErr := "Player [Nickname: " + nickname + "] is not exist"
+	logger.Warn(LC + textErr)
+
+	return -1, errors.New(textErr)
+
+}
 
 // OnInitEngine method init struct Base
 func OnInitEngine() {

@@ -23,14 +23,15 @@ func sender() {
 		udpGameClients := protoworker.GetUDPClients()
 		for udpNetData, udpConn := range udpGameClients {
 			buf := protoworker.GetGameData()
-			logger.Info(LC + "SENT [" + udpNetData.Addr.String() + "]: " + string(buf))
+			// logger.Info(LC + "SENT [" + udpNetData.Addr.String() + "]: " + string(buf))
 			_, err := udpConn.WriteToUDP(buf, udpNetData.Addr)
 			if err != nil {
 				logger.Error(LC + "Error writing message: " + err.Error())
 			}
 		}
 
-		time.Sleep(1 * time.Second)
+		protoworker.OnFPS()
+		time.Sleep(17 * time.Millisecond)
 	}
 }
 

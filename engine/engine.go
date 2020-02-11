@@ -2,13 +2,13 @@ package engine
 
 import (
 	"errors"
+	"log"
 	"net"
 	"strings"
 	"time"
 
 	"github.com/dm1trypon/game-server-golang/gameobjects"
 	"github.com/dm1trypon/game-server-golang/models/protocol/client"
-	"github.com/dm1trypon/game-server-golang/models/protocol/player"
 	"github.com/dm1trypon/game-server-golang/physics/players/movement"
 	"github.com/ivahaev/go-logger"
 )
@@ -86,7 +86,7 @@ func InitTCPClient(nickname string, addr net.Addr, conn *net.Conn) error {
 		return errors.New(textErr)
 	}
 
-	if _, err := getPlayer(nickname); err == nil {
+	if _, err := gameobjects.GetPlayer(nickname); err == nil {
 		textErr := "Player [" + nickname + "] already exist"
 		logger.Warn(LC + textErr)
 		return errors.New(textErr)
@@ -152,45 +152,82 @@ func KeyboardEvent(nickname string, keys []string) error {
 	return errors.New(textErr)
 }
 
-func getPlayer(nickname string) (player.Player, error) {
-	for _, player := range gameobjects.Players {
-		if player.Nickname == nickname {
-			return player, nil
-		}
+func keysParser(nickname string, keys []string) error {
+	log.Println(len(keys))
+	if len(keys) > 2 {
+		textErr := "Player [Nickname: " + nickname + ", Method: Keyboard ]: key limit exceeded"
+
+		logger.Warn(LC + textErr)
+
+		return errors.New(textErr)
 	}
 
-	textErr := "Player [Nickname: " + nickname + "] is not exist"
-	logger.Warn(LC + textErr)
+	if err := movement.IsConflictControl(keys); err != nil {
+		keys = []string{}
+	}
 
-	return player.Player{}, errors.New(textErr)
-}
-
-func keysParser(nickname string, keys []string) error {
 	var unallowedKeys []string
 
-	var player player.Player
-	var err error
-
-	if player, err = getPlayer(nickname); err != nil {
-		return err
+	// Used to identify the keys pressed last time.
+	control := &gameobjects.Control{
+		Up:    false,
+		Down:  false,
+		Left:  false,
+		Right: false,
 	}
 
 	for _, key := range keys {
 		if key == "up" {
+			if gameobjects.PressedKeys[nickname].Up {
+				control.Up = true
+				control.Down = false
+				continue
+			}
+
 			gameobjects.PressedKeys[nickname].Up = true
-			go movement.MovingPlayerUp(player)
+			gameobjects.PressedKeys[nickname].Down = false
+			control.Up = true
+			control.Down = false
+			go movement.MovingPlayerUp(nickname)
 			continue
 		} else if key == "down" {
+			if gameobjects.PressedKeys[nickname].Down {
+				control.Down = true
+				control.Up = false
+				continue
+			}
+
 			gameobjects.PressedKeys[nickname].Down = true
-			go movement.MovingPlayerDown(player)
+			gameobjects.PressedKeys[nickname].Up = false
+			control.Down = true
+			control.Up = false
+			go movement.MovingPlayerDown(nickname)
 			continue
 		} else if key == "left" {
+			if gameobjects.PressedKeys[nickname].Left {
+				control.Left = true
+				control.Right = false
+				continue
+			}
+
 			gameobjects.PressedKeys[nickname].Left = true
-			go movement.MovingPlayerLeft(player)
+			gameobjects.PressedKeys[nickname].Right = false
+			control.Left = true
+			control.Right = false
+			go movement.MovingPlayerLeft(nickname)
 			continue
 		} else if key == "right" {
+			if gameobjects.PressedKeys[nickname].Right {
+				control.Right = true
+				control.Left = false
+				continue
+			}
+
 			gameobjects.PressedKeys[nickname].Right = true
-			go movement.MovingPlayerRight(player)
+			gameobjects.PressedKeys[nickname].Left = false
+			control.Right = true
+			control.Left = false
+			go movement.MovingPlayerRight(nickname)
 			continue
 		} else if key == "1" {
 			continue
@@ -201,27 +238,37 @@ func keysParser(nickname string, keys []string) error {
 		}
 	}
 
-	if gameobjects.PressedKeys[nickname].Up {
+	if len(unallowedKeys) > 0 {
+		textErr := "Player [Nickname: " + nickname + ", Method: Keyboard ]: keys [" +
+			strings.Join(unallowedKeys, ", ") + "] are not allowed"
+
+		logger.Warn(LC + textErr)
+
+		return errors.New(textErr)
+	}
+
+	// If the key states do not match, the Braking method starts.
+	if gameobjects.PressedKeys[nickname].Up && !control.Up {
 		gameobjects.PressedKeys[nickname].Up = false
+		go movement.MovingUpDownBrake(nickname)
 	}
 
-	if gameobjects.PressedKeys[nickname].Down {
+	if gameobjects.PressedKeys[nickname].Down && !control.Down {
 		gameobjects.PressedKeys[nickname].Down = false
+		go movement.MovingUpDownBrake(nickname)
 	}
 
-	if gameobjects.PressedKeys[nickname].Left {
+	if gameobjects.PressedKeys[nickname].Left && !control.Left {
 		gameobjects.PressedKeys[nickname].Left = false
+		go movement.MovingLeftRightBrake(nickname)
 	}
 
-	if gameobjects.PressedKeys[nickname].Right {
+	if gameobjects.PressedKeys[nickname].Right && !control.Right {
 		gameobjects.PressedKeys[nickname].Right = false
+		go movement.MovingLeftRightBrake(nickname)
 	}
 
-	textErr := "Player [Nickname: " + nickname + ", Method: Keyboard ]: keys [" +
-		strings.Join(unallowedKeys, ", ") + "] are not allowed"
-
-	logger.Warn(LC + textErr)
-	return errors.New(textErr)
+	return nil
 }
 
 func onInitDiscTimer(nickname string) {
@@ -243,6 +290,14 @@ func onTimeExpired(nickname string) {
 			DisconnectPlayer(*tcpNetData.Addr)
 			return
 		}
+	}
+}
+
+// FPS method calc position of game's objects
+func FPS() {
+	for index := range gameobjects.Players {
+		gameobjects.Players[index].Position.X += gameobjects.Players[index].Speed.X
+		gameobjects.Players[index].Position.Y += gameobjects.Players[index].Speed.Y
 	}
 }
 
