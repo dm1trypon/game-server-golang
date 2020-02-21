@@ -49,7 +49,7 @@ func OnTCPMessage(data []byte, addr net.Addr, conn net.Conn) []byte {
 	} else if method == "keyboard" {
 		return onKeyboard(keyboard.Nickname, keyboard.Keys)
 	} else if method == "mouse" {
-		return onMouse(mouse.Nickname)
+		return onMouse(mouse.Nickname, mouse.Position.X, mouse.Position.Y, mouse.IsClicked)
 	}
 
 	textErr := "Wrong method: " + method
@@ -96,8 +96,16 @@ func onKeyboard(nickname string, keys []string) []byte {
 	return toResponse("keyboard", message, status)
 }
 
-func onMouse(nickname string) []byte {
-	return toResponse("mouse", "Method is not supported", false)
+func onMouse(nickname string, posX int, posY int, isClicked bool) []byte {
+	status := true
+	message := "OK"
+
+	if err := engine.MouseEvent(nickname, posX, posY, isClicked); err != nil {
+		status = false
+		message = err.Error()
+	}
+
+	return toResponse("mouse", message, status)
 }
 
 func onInitUDPClient(nickname string, addr *net.UDPAddr, udpConn *net.UDPConn) []byte {
@@ -165,5 +173,5 @@ func toResponse(method string, message string, status bool) []byte {
 
 // OnFPS method call on next tick frame
 func OnFPS() {
-	engine.FPS()
+	engine.CalcFrame()
 }

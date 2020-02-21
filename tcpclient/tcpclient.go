@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -19,9 +21,11 @@ func main() {
 
 	step := 1
 
+	go onMouse(conn)
+
 	for {
 		if step == 2 {
-			fmt.Fprintf(conn, `{"method":"keyboard","nickname":"playernickname","keys":["`+getRandomKeys()+`"]}`+"\n")
+			fmt.Fprintf(conn, `{"method":"keyboard","nickname":"playernickname","keys":[`+getRandomKeys()+`]}`+"\n")
 		}
 
 		if step == 1 {
@@ -39,19 +43,38 @@ func main() {
 	}
 }
 
+func onMouse(conn net.Conn) {
+	// for {
+	// 	fmt.Fprintf(conn, `{"method":"mouse","nickname":"playernickname","position":{"x": `+strconv.Itoa(rand.Intn(1000))+`, "y": `+strconv.Itoa(rand.Intn(1000))+`}, "is_clicked":true}`+"\n")
+	// 	message, err := bufio.NewReader(conn).ReadString('\n')
+	// 	if err != nil {
+	// 		fmt.Println("Error recieving:" + err.Error())
+	// 		// break
+	// 		return
+	// 	}
+	// 	fmt.Println("Message from se rver: " + message)
+	// 	time.Sleep(1000 * time.Millisecond)
+	// }
+
+	fmt.Fprintf(conn, `{"method":"mouse","nickname":"playernickname","position":{"x": `+strconv.Itoa(rand.Intn(1000))+`, "y": `+strconv.Itoa(rand.Intn(1000))+`}, "is_clicked":true}`+"\n")
+	message, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		fmt.Println("Error recieving:" + err.Error())
+		// break
+		return
+	}
+	fmt.Println("Message from server: " + message)
+	time.Sleep(1000 * time.Millisecond)
+}
+
 func getRandomKeys() string {
-	var keys string
+	var keys []string
 
 	for step := 0; step < rand.Intn(4); step++ {
-		if step < rand.Intn(4)-1 {
-			keys += KEYS[rand.Intn(4)] + ","
-		} else {
-			keys += KEYS[rand.Intn(4)]
-		}
-
+		keys = append(keys, "\""+KEYS[rand.Intn(4)]+"\"")
 	}
 
-	fmt.Println("Random: " + keys)
+	fmt.Println("Random: " + strings.Join(keys, ","))
 
-	return keys
+	return strings.Join(keys, ",")
 }

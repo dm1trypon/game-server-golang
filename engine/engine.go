@@ -2,7 +2,6 @@ package engine
 
 import (
 	"errors"
-	"log"
 	"net"
 	"strings"
 	"time"
@@ -22,6 +21,8 @@ func Init() {
 	gameobjects.UDPGameClients = make(map[*client.UDPNetData]*net.UDPConn)
 	gameobjects.TCPGameClients = make(map[*client.TCPNetData]*net.Conn)
 	gameobjects.PressedKeys = make(map[string]*gameobjects.Control)
+	gameobjects.MoveTimers = make(map[string]*time.Timer)
+	gameobjects.BrakeTimers = make(map[string]*time.Timer)
 
 	gameobjects.OnInitEngine()
 
@@ -65,7 +66,7 @@ func DisconnectPlayer(addr net.Addr) error {
 	}
 
 	if !isSuccess {
-		textErr := "Player [Nickname: " + nickname + "] already disconnected"
+		textErr := "Player [Address: " + addr.String() + "] already disconnected"
 		logger.Warn(LC + textErr)
 		return errors.New(textErr)
 	}
@@ -133,9 +134,26 @@ func InitUDPClient(nickname string, addr *net.UDPAddr, udpConn *net.UDPConn) err
 	return nil
 }
 
-// OnMouse method check event of mouse from player
-func OnMouse(nickname string) {
-	go onUpdateTimer(nickname)
+// MouseEvent method check event of mouse from player
+func MouseEvent(nickname string, cursorX int, cursorY int, isClicked bool) error {
+	for tcpNetData := range gameobjects.TCPGameClients {
+		if tcpNetData.Nickname == nickname {
+			go onUpdateTimer(nickname)
+			return mouseWorker(nickname, cursorX, cursorY, isClicked)
+		}
+	}
+
+	textErr := "Player [Nickname: " + nickname + "] is not exist for mouse method"
+	logger.Warn(LC + textErr)
+	return errors.New(textErr)
+}
+
+func mouseWorker(nickname string, cursorX int, cursorY int, isClicked bool) error {
+	if isClicked {
+		gameobjects.OnNewBullet(nickname, cursorX, cursorY)
+	}
+
+	return nil
 }
 
 // KeyboardEvent method check event of keyboard from player
@@ -153,7 +171,6 @@ func KeyboardEvent(nickname string, keys []string) error {
 }
 
 func keysParser(nickname string, keys []string) error {
-	log.Println(len(keys))
 	if len(keys) > 2 {
 		textErr := "Player [Nickname: " + nickname + ", Method: Keyboard ]: key limit exceeded"
 
@@ -178,7 +195,7 @@ func keysParser(nickname string, keys []string) error {
 
 	for _, key := range keys {
 		if key == "up" {
-			if gameobjects.PressedKeys[nickname].Up {
+			if gameobjects.PressedKeys[nickname].Up || gameobjects.PressedKeys[nickname].Down {
 				control.Up = true
 				control.Down = false
 				continue
@@ -188,10 +205,10 @@ func keysParser(nickname string, keys []string) error {
 			gameobjects.PressedKeys[nickname].Down = false
 			control.Up = true
 			control.Down = false
-			go movement.MovingPlayerUp(nickname)
+			go movement.MovingPlayer(nickname, key)
 			continue
 		} else if key == "down" {
-			if gameobjects.PressedKeys[nickname].Down {
+			if gameobjects.PressedKeys[nickname].Down || gameobjects.PressedKeys[nickname].Up {
 				control.Down = true
 				control.Up = false
 				continue
@@ -201,10 +218,10 @@ func keysParser(nickname string, keys []string) error {
 			gameobjects.PressedKeys[nickname].Up = false
 			control.Down = true
 			control.Up = false
-			go movement.MovingPlayerDown(nickname)
+			go movement.MovingPlayer(nickname, key)
 			continue
 		} else if key == "left" {
-			if gameobjects.PressedKeys[nickname].Left {
+			if gameobjects.PressedKeys[nickname].Left || gameobjects.PressedKeys[nickname].Right {
 				control.Left = true
 				control.Right = false
 				continue
@@ -214,10 +231,10 @@ func keysParser(nickname string, keys []string) error {
 			gameobjects.PressedKeys[nickname].Right = false
 			control.Left = true
 			control.Right = false
-			go movement.MovingPlayerLeft(nickname)
+			go movement.MovingPlayer(nickname, key)
 			continue
 		} else if key == "right" {
-			if gameobjects.PressedKeys[nickname].Right {
+			if gameobjects.PressedKeys[nickname].Right || gameobjects.PressedKeys[nickname].Left {
 				control.Right = true
 				control.Left = false
 				continue
@@ -227,7 +244,7 @@ func keysParser(nickname string, keys []string) error {
 			gameobjects.PressedKeys[nickname].Left = false
 			control.Right = true
 			control.Left = false
-			go movement.MovingPlayerRight(nickname)
+			go movement.MovingPlayer(nickname, key)
 			continue
 		} else if key == "1" {
 			continue
@@ -250,22 +267,22 @@ func keysParser(nickname string, keys []string) error {
 	// If the key states do not match, the Braking method starts.
 	if gameobjects.PressedKeys[nickname].Up && !control.Up {
 		gameobjects.PressedKeys[nickname].Up = false
-		go movement.MovingUpDownBrake(nickname)
+		go movement.BrakingPlayer(nickname, "up")
 	}
 
 	if gameobjects.PressedKeys[nickname].Down && !control.Down {
 		gameobjects.PressedKeys[nickname].Down = false
-		go movement.MovingUpDownBrake(nickname)
+		go movement.BrakingPlayer(nickname, "down")
 	}
 
 	if gameobjects.PressedKeys[nickname].Left && !control.Left {
 		gameobjects.PressedKeys[nickname].Left = false
-		go movement.MovingLeftRightBrake(nickname)
+		go movement.BrakingPlayer(nickname, "left")
 	}
 
 	if gameobjects.PressedKeys[nickname].Right && !control.Right {
 		gameobjects.PressedKeys[nickname].Right = false
-		go movement.MovingLeftRightBrake(nickname)
+		go movement.BrakingPlayer(nickname, "right")
 	}
 
 	return nil
@@ -293,11 +310,16 @@ func onTimeExpired(nickname string) {
 	}
 }
 
-// FPS method calc position of game's objects
-func FPS() {
+// CalcFrame method calc position of game's objects
+func CalcFrame() {
 	for index := range gameobjects.Players {
 		gameobjects.Players[index].Position.X += gameobjects.Players[index].Speed.X
 		gameobjects.Players[index].Position.Y += gameobjects.Players[index].Speed.Y
+	}
+
+	for index := range gameobjects.Bullets {
+		gameobjects.Bullets[index].Position.X += gameobjects.Bullets[index].Speed.X
+		gameobjects.Bullets[index].Position.Y += gameobjects.Bullets[index].Speed.Y
 	}
 }
 

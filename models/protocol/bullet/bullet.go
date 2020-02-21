@@ -22,9 +22,11 @@ type Speed struct {
 
 // Data of Bullet
 type Data struct {
+	ID       int    `json:"id"`
 	Nickname string `json:"nickname"`
 	Weapon   string `json:"weapon"`
 	Health   int    `json:"health"`
+	TTL      int    `json:"ttl"`
 }
 
 // Bullet - main struct

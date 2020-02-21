@@ -3,6 +3,7 @@ package gameobjects
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"math/rand"
 	"net"
 	"time"
@@ -28,6 +29,12 @@ type Control struct {
 	Up    bool
 	Down  bool
 }
+
+// MoveTimers - control's timers
+var MoveTimers map[string]*time.Timer
+
+// BrakeTimers - control's timers
+var BrakeTimers map[string]*time.Timer
 
 // TDisconnect - hang timers for players
 var TDisconnect map[string]*time.Timer
@@ -72,6 +79,21 @@ func GetIndexPlayer(nickname string) (int, error) {
 
 }
 
+// GetIndexBullet method gets bullet's index nickname
+func GetIndexBullet(nickname string) (int, error) {
+	for index, bullet := range Bullets {
+		if bullet.Data.Nickname == nickname {
+			return index, nil
+		}
+	}
+
+	textErr := "Bullet [Nickname: " + nickname + "] is not exist"
+	logger.Warn(LC + textErr)
+
+	return -1, errors.New(textErr)
+
+}
+
 // OnInitEngine method init struct Base
 func OnInitEngine() {
 	Base = base.Base{
@@ -85,9 +107,97 @@ func OnInitEngine() {
 
 // OnRemovePlayer method remove player in gameprotocol
 func OnRemovePlayer(index int) {
-	Players[index] = Players[len(Players)-1]
-	Players[len(Players)-1] = *new(player.Player)
-	Players = Players[:len(Players)-1]
+	Players = append(Players[:index], Players[index+1:]...)
+}
+
+func getBulletSpeed(playerPosX int, playerPosY int, cursorX int, cursorY int, maxSpeed int) map[string]int {
+	var speed map[string]int
+	speed = make(map[string]int)
+	speed["x"] = int((cursorX - playerPosX) * maxSpeed /
+		int(math.Sqrt(float64((cursorX-playerPosX)*(cursorX-playerPosX)+(cursorY-playerPosY)*(cursorY-playerPosY)))))
+
+	speed["y"] = int((cursorY - playerPosY) * maxSpeed /
+		int(math.Sqrt(float64((cursorX-playerPosX)*(cursorX-playerPosX)+(cursorY-playerPosY)*(cursorY-playerPosY)))))
+
+	return speed
+}
+
+// OnNewBullet method create player's bullet
+func OnNewBullet(nickname string, cursorX int, cursorY int) {
+	var index int
+	var err error
+
+	if index, err = GetIndexPlayer(nickname); err != nil {
+		return
+	}
+
+	bullets := config.GameConfig.GameObjects.Bullets
+	weapon := Players[index].Ammunition.Weapon
+	bulletData := config.Bullet{
+		Width:  -1,
+		Height: -1,
+		Speed:  -1,
+		Weapon: "",
+		Health: -1,
+		Rate:   -1,
+		TTL:    -1,
+	}
+
+	for _, bullet := range bullets {
+		if bullet.Weapon == weapon {
+			bulletData = bullet
+			break
+		}
+	}
+
+	if bulletData.Width == -1 {
+		logger.Warn(LC + "Weapon [" + weapon + "] is not found in game's config")
+		return
+	}
+
+	playerPosX := Players[index].Position.X
+	playerPosY := Players[index].Position.Y
+
+	speed := getBulletSpeed(playerPosX, playerPosY, cursorX, cursorY, bulletData.Speed)
+
+	bullet := &bullet.Bullet{
+		Position: bullet.Position{
+			X:        playerPosX,
+			Y:        playerPosY,
+			Rotation: 0,
+		},
+		Size: bullet.Size{
+			Width:  bulletData.Width,
+			Height: bulletData.Height,
+		},
+		Speed: bullet.Speed{
+			X:   speed["x"],
+			Y:   speed["y"],
+			Max: bulletData.Speed,
+		},
+		Data: bullet.Data{
+			Nickname: nickname,
+			ID:       rand.Intn(100000),
+			Weapon:   weapon,
+			Health:   bulletData.Health,
+			TTL:      bulletData.TTL,
+		},
+	}
+
+	Bullets = append(Bullets, *bullet)
+	Base.Bullets = Bullets
+	go OnBulletTTLExpired(nickname, bullet.Data.ID, bullet.Data.TTL)
+}
+
+// OnBulletTTLExpired method remove bullet's object when time is expired.
+func OnBulletTTLExpired(nickname string, ID int, TTL int) {
+	time.Sleep(time.Duration(TTL) * time.Second)
+
+	for index, bullet := range Bullets {
+		if bullet.Data.Nickname == nickname && bullet.Data.ID == ID {
+			Bullets = append(Bullets[:index], Bullets[index+1:]...)
+		}
+	}
 }
 
 // OnNewPlayer method create new player

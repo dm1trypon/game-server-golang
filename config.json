@@ -1,7 +1,7 @@
 {
     "net" : {
-        "udp_path": "localhost:3000",
-        "tcp_path": "localhost:3001"
+        "udp_path": "10.23.0.59:3000",
+        "tcp_path": "10.23.0.59:3001"
     },
     "game": {
         "fps": 60,
@@ -11,7 +11,7 @@
         "player": {
             "width": 30,
             "height": 30,
-            "speed": 10,
+            "speed": 5,
             "weapon": "blaster",
             "cartridges": -1,
             "health": 100,
@@ -24,7 +24,8 @@
                 "height": 30,
                 "speed": 20,
                 "rate": 30,
-                "health": 20
+                "health": 20,
+                "ttl": 10
             },
             {
                 "weapon": "plazma",
@@ -32,7 +33,8 @@
                 "height": 25,
                 "speed": 25,
                 "rate": 20,
-                "health": 40
+                "health": 40,
+                "ttl": 15
             },
             {
                 "weapon": "minigun",
@@ -40,7 +42,8 @@
                 "height": 10,
                 "speed": 40,
                 "rate": 5,
-                "health": 10
+                "health": 10,
+                "ttl": 7
             },
             {
                 "weapon": "shotgun",
@@ -48,7 +51,8 @@
                 "height": 35,
                 "speed": 70,
                 "rate": 90,
-                "health": 100
+                "health": 100,
+                "ttl": 20
             }
         ],
         "blocks": [

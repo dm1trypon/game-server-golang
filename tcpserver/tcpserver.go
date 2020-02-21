@@ -53,6 +53,7 @@ func handleRequest(conn net.Conn) {
 	for {
 		message, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
+			logger.Error(LC + err.Error())
 			onDisconnected(conn)
 			break
 		}

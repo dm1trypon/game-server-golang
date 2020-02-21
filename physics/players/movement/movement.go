@@ -43,8 +43,8 @@ func IsConflictControl(keys []string) error {
 	return nil
 }
 
-// MovingPlayerUp method moving an object with acceleration or braking
-func MovingPlayerUp(nickname string) {
+// MovingPlayer method controlling speed of player
+func MovingPlayer(nickname string, key string) {
 	for {
 		var index int
 		var err error
@@ -53,138 +53,52 @@ func MovingPlayerUp(nickname string) {
 			return
 		}
 
-		gameobjects.Players[index].Speed.Y++
+		playerSpeed := 0
 
-		playerSpeedY := gameobjects.Players[index].Speed.Y
-		playerSpeedMax := gameobjects.Players[index].Speed.Max
-
-		if !gameobjects.PressedKeys[nickname].Up {
-			break
-		}
-
-		if int(math.Abs(float64(playerSpeedY))) >= playerSpeedMax {
-			break
-		}
-
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-// MovingPlayerDown method moving an object with acceleration or braking
-func MovingPlayerDown(nickname string) {
-	for {
-		var index int
-		var err error
-
-		if index, err = gameobjects.GetIndexPlayer(nickname); err != nil {
-			return
-		}
-
-		gameobjects.Players[index].Speed.Y--
-
-		playerSpeedY := gameobjects.Players[index].Speed.Y
-		playerSpeedMax := gameobjects.Players[index].Speed.Max
-
-		if !gameobjects.PressedKeys[nickname].Down {
-			break
-		}
-
-		if int(math.Abs(float64(playerSpeedY))) >= playerSpeedMax {
-			break
-		}
-
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-// MovingPlayerLeft method moving an object with acceleration or braking
-func MovingPlayerLeft(nickname string) {
-	for {
-		var index int
-		var err error
-
-		if index, err = gameobjects.GetIndexPlayer(nickname); err != nil {
-			return
-		}
-
-		gameobjects.Players[index].Speed.X++
-
-		playerSpeedX := gameobjects.Players[index].Speed.X
-		playerSpeedMax := gameobjects.Players[index].Speed.Max
-
-		if !gameobjects.PressedKeys[nickname].Left {
-			break
-		}
-
-		if int(math.Abs(float64(playerSpeedX))) >= playerSpeedMax {
-			break
-		}
-
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-// MovingPlayerRight method moving an object with acceleration or braking
-func MovingPlayerRight(nickname string) {
-	for {
-		var index int
-		var err error
-
-		if index, err = gameobjects.GetIndexPlayer(nickname); err != nil {
-			return
-		}
-
-		gameobjects.Players[index].Speed.X--
-
-		playerSpeedX := gameobjects.Players[index].Speed.X
-		playerSpeedMax := gameobjects.Players[index].Speed.Max
-
-		if !gameobjects.PressedKeys[nickname].Right {
-			break
-		}
-
-		if int(math.Abs(float64(playerSpeedX))) >= playerSpeedMax {
-			break
-		}
-
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-// MovingUpDownBrake method slows down a player
-func MovingUpDownBrake(nickname string) {
-	for {
-		var index int
-		var err error
-
-		if index, err = gameobjects.GetIndexPlayer(nickname); err != nil {
-			return
-		}
-
-		if gameobjects.Players[index].Speed.Y > 0 {
+		if key == "up" {
 			gameobjects.Players[index].Speed.Y--
-		} else if gameobjects.Players[index].Speed.Y < 0 {
+			if !gameobjects.PressedKeys[nickname].Up {
+				break
+			}
+
+			playerSpeed = gameobjects.Players[index].Speed.Y
+		} else if key == "down" {
 			gameobjects.Players[index].Speed.Y++
-		} else if gameobjects.Players[index].Speed.Y == 0 {
-			return
-		}
+			if !gameobjects.PressedKeys[nickname].Down {
+				break
+			}
 
-		playerSpeedY := gameobjects.Players[index].Speed.Y
+			playerSpeed = gameobjects.Players[index].Speed.Y
+		} else if key == "left" {
+			gameobjects.Players[index].Speed.X--
+			if !gameobjects.PressedKeys[nickname].Left {
+				break
+			}
 
-		if gameobjects.PressedKeys[nickname].Down {
+			playerSpeed = gameobjects.Players[index].Speed.X
+		} else if key == "right" {
+			gameobjects.Players[index].Speed.X++
+			if !gameobjects.PressedKeys[nickname].Right {
+				break
+			}
+
+			playerSpeed = gameobjects.Players[index].Speed.X
+		} else {
 			break
 		}
 
-		if int(math.Abs(float64(playerSpeedY))) <= 0 {
+		playerSpeedMax := gameobjects.Players[index].Speed.Max
+
+		if int(math.Abs(float64(playerSpeed))) >= playerSpeedMax {
 			break
 		}
 
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(40)
 	}
 }
 
-// MovingLeftRightBrake method slows down a player
-func MovingLeftRightBrake(nickname string) {
+// BrakingPlayer method slows down a player
+func BrakingPlayer(nickname string, key string) {
 	for {
 		var index int
 		var err error
@@ -193,24 +107,52 @@ func MovingLeftRightBrake(nickname string) {
 			return
 		}
 
-		if gameobjects.Players[index].Speed.X > 0 {
-			gameobjects.Players[index].Speed.X--
-		} else if gameobjects.Players[index].Speed.X < 0 {
-			gameobjects.Players[index].Speed.X++
-		} else if gameobjects.Players[index].Speed.X == 0 {
+		playerSpeed := 0
+
+		if key == "left" || key == "right" {
+			if gameobjects.Players[index].Speed.X > 0 {
+				gameobjects.Players[index].Speed.X--
+			} else if gameobjects.Players[index].Speed.X < 0 {
+				gameobjects.Players[index].Speed.X++
+			} else if gameobjects.Players[index].Speed.X == 0 {
+				return
+			}
+
+			if gameobjects.PressedKeys[nickname].Left {
+				break
+			}
+
+			if gameobjects.PressedKeys[nickname].Right {
+				break
+			}
+
+			playerSpeed = gameobjects.Players[index].Speed.X
+		} else if key == "up" || key == "down" {
+			if gameobjects.Players[index].Speed.Y > 0 {
+				gameobjects.Players[index].Speed.Y--
+			} else if gameobjects.Players[index].Speed.Y < 0 {
+				gameobjects.Players[index].Speed.Y++
+			} else if gameobjects.Players[index].Speed.Y == 0 {
+				return
+			}
+
+			if gameobjects.PressedKeys[nickname].Up {
+				break
+			}
+
+			if gameobjects.PressedKeys[nickname].Down {
+				break
+			}
+
+			playerSpeed = gameobjects.Players[index].Speed.Y
+		} else {
 			return
 		}
 
-		playerSpeedX := gameobjects.Players[index].Speed.X
-
-		if gameobjects.PressedKeys[nickname].Right {
+		if int(math.Abs(float64(playerSpeed))) <= 0 {
 			break
 		}
 
-		if int(math.Abs(float64(playerSpeedX))) <= 0 {
-			break
-		}
-
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(40)
 	}
 }

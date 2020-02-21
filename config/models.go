@@ -31,6 +31,7 @@ type Bullet struct {
 	Weapon string `json:"weapon"`
 	Health int    `json:"health"`
 	Rate   int    `json:"rate"`
+	TTL    int    `json:"ttl"`
 }
 
 // Block struct contains base block's setting
