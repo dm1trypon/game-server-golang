@@ -142,8 +142,9 @@
             }
         ],
         "scene": {
-            "width": 3000,
-            "height": 4000
+            "width": 400,
+            "height": 400
         }
     }
 }
+

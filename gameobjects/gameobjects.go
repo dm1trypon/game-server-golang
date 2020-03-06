@@ -30,11 +30,8 @@ type Control struct {
 	Down  bool
 }
 
-// MoveTimers - control's timers
-var MoveTimers map[string]*time.Timer
-
-// BrakeTimers - control's timers
-var BrakeTimers map[string]*time.Timer
+// MovementTimers contains movement's timers
+var MovementTimers map[string]*time.Timer
 
 // TDisconnect - hang timers for players
 var TDisconnect map[string]*time.Timer
@@ -49,6 +46,7 @@ var Bullets []bullet.Bullet
 var Blocks []block.Block
 var Scene scene.Scene
 var Base base.Base
+var BaseBuf base.Base
 
 // GetPlayer method gets player's object by nickname
 func GetPlayer(nickname string) (player.Player, error) {
@@ -103,6 +101,8 @@ func OnInitEngine() {
 		Scene:   scene.Scene{},
 		Blocks:  []block.Block{},
 	}
+
+	BaseBuf = Base
 }
 
 // OnRemovePlayer method remove player in gameprotocol
@@ -200,6 +200,22 @@ func OnBulletTTLExpired(nickname string, ID int, TTL int) {
 	}
 }
 
+// OnNewScene method create new scene
+func OnNewScene() {
+	scene := scene.Scene{
+		Position: scene.Position{
+			X: 0,
+			Y: 0,
+		},
+		Size: scene.Size{
+			Width:  config.GameConfig.GameObjects.Scene.Width,
+			Height: config.GameConfig.GameObjects.Scene.Height,
+		},
+	}
+
+	Base.Scene = scene
+}
+
 // OnNewPlayer method create new player
 func OnNewPlayer(nickname string) {
 	weapon := config.GameConfig.GameObjects.Player.Weapon
@@ -268,12 +284,29 @@ func OnNewPlayer(nickname string) {
 
 // GetBase method compare and return Base struct
 func GetBase() []byte {
+	// for index, player := range Base.Players {
+	// 	if int(math.Abs(float64(player.Speed.X))) > 0 {
+	// 		if player.Position.X == BaseBuf.Players[index].Position.X {
+	// 			logger.Warn(LC + "Duplicating player's position X")
+	// 			return []byte("")
+	// 		}
+	// 	}
+
+	// 	if int(math.Abs(float64(player.Speed.Y))) > 0 {
+	// 		if player.Position.Y == BaseBuf.Players[index].Position.Y {
+	// 			logger.Warn(LC + "Duplicating player's position Y")
+	// 			return []byte("")
+	// 		}
+	// 	}
+	// }
+
 	data, err := json.Marshal(&Base)
 	if err != nil {
 		logger.Error(LC + err.Error())
 		return []byte("")
 	}
 
+	BaseBuf = Base
 	return data
 }
 

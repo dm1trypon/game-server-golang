@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -21,12 +22,12 @@ func Init() {
 	gameobjects.UDPGameClients = make(map[*client.UDPNetData]*net.UDPConn)
 	gameobjects.TCPGameClients = make(map[*client.TCPNetData]*net.Conn)
 	gameobjects.PressedKeys = make(map[string]*gameobjects.Control)
-	gameobjects.MoveTimers = make(map[string]*time.Timer)
-	gameobjects.BrakeTimers = make(map[string]*time.Timer)
+	gameobjects.MovementTimers = make(map[string]*time.Timer)
 
 	gameobjects.OnInitEngine()
-
 	logger.Notice(LC + "GameEngine has been inited")
+	gameobjects.OnNewScene()
+	logger.Notice(LC + "Game's scene has been created")
 }
 
 // DisconnectPlayer method disconnect player by nickname
@@ -35,7 +36,7 @@ func DisconnectPlayer(addr net.Addr) error {
 	nickname := ""
 
 	for tcpNetData := range gameobjects.TCPGameClients {
-		if *tcpNetData.Addr == addr {
+		if tcpNetData.Addr.String() == addr.String() {
 			delete(gameobjects.TCPGameClients, tcpNetData)
 			isSuccess = true
 			nickname = tcpNetData.Nickname
@@ -74,27 +75,44 @@ func DisconnectPlayer(addr net.Addr) error {
 	return nil
 }
 
-// InitTCPClient method check and set player on tcp server
-func InitTCPClient(nickname string, addr net.Addr, conn *net.Conn) error {
-	tcpNetData := &client.TCPNetData{
-		Addr:     &addr,
-		Nickname: nickname,
+// CheckPlayer method checks player for access
+func CheckPlayer(addr net.Addr) error {
+	for key := range gameobjects.TCPGameClients {
+		log.Println(key)
+		if key.Addr.String() == addr.String() {
+			return nil
+		}
 	}
 
-	if _, ok := gameobjects.TCPGameClients[tcpNetData]; ok {
-		textErr := "Game TCP Client[Nickname: " + nickname + ", " + addr.String() + "] already connected"
-		logger.Warn(LC + textErr)
-		return errors.New(textErr)
+	textErr := "Error, player [Address: " + addr.String() + "] is unallowed"
+	logger.Warn(LC + textErr)
+	return errors.New(textErr)
+}
+
+// InitTCPClient method check and set player on tcp server
+func InitTCPClient(nickname string, addr net.Addr, conn *net.Conn) error {
+	for tcpNetData := range gameobjects.TCPGameClients {
+		if tcpNetData.Addr.String() == addr.String() {
+			textErr := "Game TCP Client[Nickname: " + nickname + "; Address: " + addr.String() + "] already connected"
+			logger.Warn(LC + textErr)
+			return errors.New(textErr)
+		}
 	}
 
 	if _, err := gameobjects.GetPlayer(nickname); err == nil {
-		textErr := "Player [" + nickname + "] already exist"
+		textErr := "Player [Nickname: " + nickname + "] already exist"
 		logger.Warn(LC + textErr)
 		return errors.New(textErr)
 	}
 
-	logger.Notice(LC + "Connected TCP Game Client [Nickname: " + nickname + ", " + addr.String() + "]")
+	tcpNetData := &client.TCPNetData{
+		Addr:     addr,
+		Nickname: nickname,
+	}
+
 	gameobjects.TCPGameClients[tcpNetData] = conn
+
+	logger.Notice(LC + "Connected TCP Game Client [Nickname: " + nickname + ", " + addr.String() + "]")
 
 	onInitDiscTimer(nickname)
 	gameobjects.OnNewPlayer(nickname)
@@ -104,15 +122,17 @@ func InitTCPClient(nickname string, addr net.Addr, conn *net.Conn) error {
 
 // InitUDPClient method check and set player on udp server
 func InitUDPClient(nickname string, addr *net.UDPAddr, udpConn *net.UDPConn) error {
+	for key := range gameobjects.UDPGameClients {
+		if key.Nickname == nickname {
+			textErr := "Player [Nickname: " + nickname + "] already connected"
+			logger.Warn(LC + textErr)
+			return errors.New(textErr)
+		}
+	}
+
 	udpNetData := &client.UDPNetData{
 		Addr:     addr,
 		Nickname: nickname,
-	}
-
-	if _, ok := gameobjects.UDPGameClients[udpNetData]; ok {
-		textErr := "Player " + nickname + " already connected"
-		logger.Warn(LC + textErr)
-		return errors.New(textErr)
 	}
 
 	isAllowed := false
@@ -124,7 +144,7 @@ func InitUDPClient(nickname string, addr *net.UDPAddr, udpConn *net.UDPConn) err
 	}
 
 	if !isAllowed {
-		textErr := "Player " + nickname + " is unallowed"
+		textErr := "Player [Nickname: " + nickname + "] is unallowed"
 		logger.Warn(LC + textErr)
 		return errors.New(textErr)
 	}
@@ -172,7 +192,7 @@ func KeyboardEvent(nickname string, keys []string) error {
 
 func keysParser(nickname string, keys []string) error {
 	if len(keys) > 2 {
-		textErr := "Player [Nickname: " + nickname + ", Method: Keyboard ]: key limit exceeded"
+		textErr := "Player [Nickname: " + nickname + "; Method: Keyboard ]: key limit exceeded"
 
 		logger.Warn(LC + textErr)
 
@@ -198,53 +218,69 @@ func keysParser(nickname string, keys []string) error {
 			if gameobjects.PressedKeys[nickname].Up || gameobjects.PressedKeys[nickname].Down {
 				control.Up = true
 				control.Down = false
+
 				continue
 			}
 
 			gameobjects.PressedKeys[nickname].Up = true
 			gameobjects.PressedKeys[nickname].Down = false
+
 			control.Up = true
 			control.Down = false
+
 			go movement.MovingPlayer(nickname, key)
+
 			continue
 		} else if key == "down" {
 			if gameobjects.PressedKeys[nickname].Down || gameobjects.PressedKeys[nickname].Up {
 				control.Down = true
 				control.Up = false
+
 				continue
 			}
 
 			gameobjects.PressedKeys[nickname].Down = true
 			gameobjects.PressedKeys[nickname].Up = false
+
 			control.Down = true
 			control.Up = false
+
 			go movement.MovingPlayer(nickname, key)
+
 			continue
 		} else if key == "left" {
 			if gameobjects.PressedKeys[nickname].Left || gameobjects.PressedKeys[nickname].Right {
 				control.Left = true
 				control.Right = false
+
 				continue
 			}
 
 			gameobjects.PressedKeys[nickname].Left = true
 			gameobjects.PressedKeys[nickname].Right = false
+
 			control.Left = true
 			control.Right = false
+
 			go movement.MovingPlayer(nickname, key)
+
 			continue
 		} else if key == "right" {
 			if gameobjects.PressedKeys[nickname].Right || gameobjects.PressedKeys[nickname].Left {
 				control.Right = true
 				control.Left = false
+
 				continue
 			}
 
 			gameobjects.PressedKeys[nickname].Right = true
 			gameobjects.PressedKeys[nickname].Left = false
+
 			control.Right = true
 			control.Left = false
+
 			go movement.MovingPlayer(nickname, key)
+
 			continue
 		} else if key == "1" {
 			continue
@@ -256,7 +292,7 @@ func keysParser(nickname string, keys []string) error {
 	}
 
 	if len(unallowedKeys) > 0 {
-		textErr := "Player [Nickname: " + nickname + ", Method: Keyboard ]: keys [" +
+		textErr := "Player [Nickname: " + nickname + "; Method: Keyboard ]: keys [" +
 			strings.Join(unallowedKeys, ", ") + "] are not allowed"
 
 		logger.Warn(LC + textErr)
@@ -278,6 +314,10 @@ func keysParser(nickname string, keys []string) error {
 	if gameobjects.PressedKeys[nickname].Left && !control.Left {
 		gameobjects.PressedKeys[nickname].Left = false
 		go movement.BrakingPlayer(nickname, "left")
+	}
+
+	if gameobjects.PressedKeys[nickname].Left {
+		go movement.BrakingPlayer(nickname, "right")
 	}
 
 	if gameobjects.PressedKeys[nickname].Right && !control.Right {
@@ -304,7 +344,7 @@ func onTimeExpired(nickname string) {
 
 	for tcpNetData := range gameobjects.TCPGameClients {
 		if tcpNetData.Nickname == nickname {
-			DisconnectPlayer(*tcpNetData.Addr)
+			DisconnectPlayer(tcpNetData.Addr)
 			return
 		}
 	}

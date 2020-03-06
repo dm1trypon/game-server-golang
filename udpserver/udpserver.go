@@ -19,19 +19,37 @@ const (
 )
 
 func sender() {
+	ms := 0
+
 	for {
-		udpGameClients := protoworker.GetUDPClients()
-		for udpNetData, udpConn := range udpGameClients {
+		if ms%17 == 0 {
+			protoworker.OnFPS()
 			buf := protoworker.GetGameData()
-			// logger.Info(LC + "SENT [" + udpNetData.Addr.String() + "]: " + string(buf))
-			_, err := udpConn.WriteToUDP(buf, udpNetData.Addr)
-			if err != nil {
-				logger.Error(LC + "Error writing message: " + err.Error())
+			udpGameClients := protoworker.GetUDPClients()
+
+			for udpNetData, udpConn := range udpGameClients {
+				if len(string(buf)) < 1 {
+					break
+				}
+				// logger.Info(LC + "SENT [" + udpNetData.Addr.String() + "]: " + string(buf))
+				_, err := udpConn.WriteToUDP(buf, udpNetData.Addr)
+				if err != nil {
+					logger.Error(LC + "Error writing message: " + err.Error())
+				}
 			}
 		}
 
-		protoworker.OnFPS()
-		time.Sleep(17 * time.Millisecond)
+		if ms%100 == 0 {
+
+		}
+
+		if ms > 999 {
+			ms = 0
+		}
+
+		ms++
+
+		time.Sleep(1 * time.Millisecond)
 	}
 }
 

@@ -52,7 +52,7 @@ func onMouse(conn net.Conn) {
 	// 		// break
 	// 		return
 	// 	}
-	// 	fmt.Println("Message from se rver: " + message)
+	// 	fmt.Println("Message from server: " + message)
 	// 	time.Sleep(1000 * time.Millisecond)
 	// }
 

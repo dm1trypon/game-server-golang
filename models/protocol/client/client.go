@@ -63,6 +63,6 @@ type UDPNetData struct {
 
 // TCPNetData struct contains TCP's connection's data
 type TCPNetData struct {
-	Addr     *net.Addr
+	Addr     net.Addr
 	Nickname string
 }

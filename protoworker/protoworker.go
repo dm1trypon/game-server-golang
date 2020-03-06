@@ -14,7 +14,7 @@ import (
 const LC = "[ProtoWorker] >> "
 
 // OnTCPMessage method parse data from client
-func OnTCPMessage(data []byte, addr net.Addr, conn net.Conn) []byte {
+func OnTCPMessage(data []byte, addr net.Addr, conn net.Conn) ([]byte, bool) {
 	disconnect := &client.Disconnect{}
 	initTCP := &client.InitTCP{}
 	mouse := &client.Mouse{}
@@ -42,21 +42,27 @@ func OnTCPMessage(data []byte, addr net.Addr, conn net.Conn) []byte {
 		method = keyboard.Method
 	}
 
+	if method != "init_tcp" {
+		if err = engine.CheckPlayer(addr); err != nil {
+			return toResponse("error", err.Error(), false), true
+		}
+	}
+
 	if method == "init_tcp" {
 		return onInitTCPClient(initTCP.Nickname, &addr, &conn)
 	} else if method == "disconnect" {
-		return OnDisconnectPlayer(addr)
+		return OnDisconnectPlayer(addr), false
 	} else if method == "keyboard" {
-		return onKeyboard(keyboard.Nickname, keyboard.Keys)
+		return onKeyboard(keyboard.Nickname, keyboard.Keys), false
 	} else if method == "mouse" {
-		return onMouse(mouse.Nickname, mouse.Position.X, mouse.Position.Y, mouse.IsClicked)
+		return onMouse(mouse.Nickname, mouse.Position.X, mouse.Position.Y, mouse.IsClicked), false
 	}
 
 	textErr := "Wrong method: " + method
 
 	logger.Error(LC + textErr)
 
-	return toResponse("error", textErr, false)
+	return toResponse("error", textErr, false), false
 }
 
 // OnUDPMessage method parse data from UDP client
@@ -120,7 +126,7 @@ func onInitUDPClient(nickname string, addr *net.UDPAddr, udpConn *net.UDPConn) [
 	return toResponse("init_udp", message, status)
 }
 
-func onInitTCPClient(nickname string, addr *net.Addr, conn *net.Conn) []byte {
+func onInitTCPClient(nickname string, addr *net.Addr, conn *net.Conn) ([]byte, bool) {
 	status := true
 	message := "OK"
 
@@ -129,7 +135,7 @@ func onInitTCPClient(nickname string, addr *net.Addr, conn *net.Conn) []byte {
 		message = err.Error()
 	}
 
-	return toResponse("init_tcp", message, status)
+	return toResponse("init_tcp", message, status), !status
 }
 
 // OnDisconnectPlayer method disconnects's player

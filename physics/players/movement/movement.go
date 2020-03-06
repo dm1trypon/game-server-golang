@@ -3,6 +3,7 @@ package movement
 import (
 	"errors"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/dm1trypon/game-server-golang/gameobjects"
@@ -13,6 +14,12 @@ const (
 	// LC - Logging category
 	LC = "[Movement] >> "
 )
+
+// mutex is used to prevent the error of competitive sending messages from the web socket.
+var mutex = &sync.Mutex{}
+
+// canceled - used for cancel movement's timers
+var canceled = make(chan struct{})
 
 // ConflictControlKeys contains unallowed keys
 var ConflictControlKeys = [2][2]string{{"left", "right"}, {"up", "down"}}
@@ -45,6 +52,10 @@ func IsConflictControl(keys []string) error {
 
 // MovingPlayer method controlling speed of player
 func MovingPlayer(nickname string, key string) {
+	// if _, ok := gameobjects.MovementTimers[key+"_brake"]; ok {
+	// 	gameobjects.MovementTimers[key+"_brake"].Stop()
+	// }
+
 	for {
 		var index int
 		var err error
@@ -93,12 +104,31 @@ func MovingPlayer(nickname string, key string) {
 			break
 		}
 
-		time.Sleep(40)
+		if _, ok := gameobjects.MovementTimers[key+"_move"]; ok {
+			gameobjects.MovementTimers[key+"_move"].Stop()
+		}
+
+		mutex.Lock()
+		gameobjects.MovementTimers[key+"_move"] = time.NewTimer(100 * time.Millisecond)
+		mutex.Unlock()
+
+		select {
+		case <-gameobjects.MovementTimers[key+"_move"].C:
+			continue
+		case <-canceled:
+			break
+		}
 	}
 }
 
 // BrakingPlayer method slows down a player
 func BrakingPlayer(nickname string, key string) {
+	mutex.Lock()
+	if _, ok := gameobjects.MovementTimers[key+"_move"]; ok {
+		gameobjects.MovementTimers[key+"_move"].Stop()
+	}
+	mutex.Unlock()
+
 	for {
 		var index int
 		var err error
@@ -131,6 +161,7 @@ func BrakingPlayer(nickname string, key string) {
 			if gameobjects.Players[index].Speed.Y > 0 {
 				gameobjects.Players[index].Speed.Y--
 			} else if gameobjects.Players[index].Speed.Y < 0 {
+
 				gameobjects.Players[index].Speed.Y++
 			} else if gameobjects.Players[index].Speed.Y == 0 {
 				return
@@ -153,6 +184,19 @@ func BrakingPlayer(nickname string, key string) {
 			break
 		}
 
-		time.Sleep(40)
+		if _, ok := gameobjects.MovementTimers[key+"_brake"]; ok {
+			gameobjects.MovementTimers[key+"_brake"].Stop()
+		}
+
+		mutex.Lock()
+		gameobjects.MovementTimers[key+"_brake"] = time.NewTimer(100 * time.Millisecond)
+		mutex.Unlock()
+
+		select {
+		case <-gameobjects.MovementTimers[key+"_brake"].C:
+			continue
+		case <-canceled:
+			break
+		}
 	}
 }

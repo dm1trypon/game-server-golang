@@ -60,13 +60,19 @@ func handleRequest(conn net.Conn) {
 
 		addr := conn.RemoteAddr()
 		logger.Info(LC + "RECV [" + addr.String() + "]: " + message)
-		data := string(protoworker.OnTCPMessage([]byte(message), addr, conn)) + "\n"
-		conn.Write([]byte(data))
+		data, isDisconnect := protoworker.OnTCPMessage([]byte(message), addr, conn)
+		logger.Info(LC + "SENT [" + addr.String() + "]:" + string(data))
+		conn.Write([]byte(string(data) + "\n"))
+
+		if isDisconnect {
+			logger.Info(LC + "Player [" + addr.String() + "] close connection")
+			conn.Close()
+			break
+		}
 	}
 }
 
 func onDisconnected(conn net.Conn) {
-	conn.RemoteAddr()
 	data := string(protoworker.OnDisconnectPlayer(conn.RemoteAddr())) + "\n"
 	conn.Write([]byte(data))
 }
