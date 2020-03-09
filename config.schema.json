@@ -1,0 +1,164 @@
+{
+    "title": "Config",
+    "type": "object",
+    "properties": {
+        "net": {
+            "type": "object",
+            "properties": {
+                "udp_path": {
+                    "type": "string"
+                },
+                "tcp_path": {
+                    "type": "string"
+                }
+            },
+            "required": ["udp_path", "tcp_path"]
+        },
+        "game": {
+            "type": "object",
+            "properties": {
+                "fps": {
+                    "type": "integer",
+                    "minimum": 5
+                },
+                "max_players": {
+                    "type": "integer",
+                    "minimum": 2
+                }
+            },
+            "required": ["fps", "max_players"]
+        },
+        "game_objects": {
+            "type": "object",
+            "properties": {
+                "player": {
+                    "type": "object",
+                    "properties": {
+                        "width": {
+                            "type": "integer",
+                            "minimum": 10
+                        },
+                        "height": {
+                            "type": "integer",
+                            "minimum": 10
+                        },
+                        "speed": {
+                            "type": "integer",
+                            "minimum": 5
+                        },
+                        "weapon": {
+                            "type": "string"
+                        },
+                        "cartridges": {
+                            "type": "integer",
+                            "minimum": -1
+                        },
+                        "health": {
+                            "type": "integer",
+                            "minimum": 10
+                        },
+                        "armor": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    "required": ["width", "height", "speed", "weapon","cartridges", "health", "armor"]
+                },
+                "bullets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "width": {
+                                "type": "integer",
+                                "minimum": 10
+                            },
+                            "height": {
+                                "type": "integer",
+                                "minimum": 10
+                            },
+                            "speed": {
+                                "type": "integer",
+                                "minimum": 5
+                            },
+                            "weapon": {
+                                "type": "string"
+                            },
+                            "ttl": {
+                                "type": "integer",
+                                "minimum": 5
+                            },
+                            "health": {
+                                "type": "integer",
+                                "minimum": 1
+                            },
+                            "rate": {
+                                "type": "integer",
+                                "minimum": 10
+                            }
+                        },
+                        "required": ["width", "height", "speed", "weapon","ttl", "health", "rate"]
+                    }
+                },
+                "blocks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "size": {
+                                "type": "object",
+                                "properties": {
+                                    "width": {
+                                        "type": "integer",
+                                        "minimum": 10
+                                    },
+                                    "height": {
+                                        "type": "integer",
+                                        "minimum": 10
+                                    }
+                                },
+                                "required": ["width", "height"]
+                            },
+                            "data": {
+                                "type": "object",
+                                "properties": {
+                                    "health": {
+                                        "type": "integer",
+                                        "minimum": 10
+                                    },
+                                    "kind": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": ["health", "kind"]
+                            }
+                        },
+                        "required": ["size", "data"]
+                    }
+                },
+                "effects": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "scene": {
+                    "type": "object",
+                    "properties": {
+                        "width": {
+                            "type": "integer",
+                            "minimum": 10
+                        },
+                        "height": {
+                            "type": "integer",
+                            "minimum": 10
+                        }
+                    },
+                    "required": ["width", "height"]
+                }
+            },
+            "required": ["player", "bullets", "effects", "scene", "blocks"]
+        }
+    },
+    "required": ["net", "game", "game_objects"]
+  }
