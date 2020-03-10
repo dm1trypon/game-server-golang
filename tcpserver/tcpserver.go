@@ -1,7 +1,7 @@
 package tcpserver
 
 import (
-	"fmt"
+	"io"
 	"net"
 	"os"
 
@@ -12,6 +12,9 @@ import (
 
 // LC - Logging category
 const LC = "[TCPServer] >> "
+
+// BufferSize - maximum buffer's size
+const BufferSize = 1024
 
 // Start - a method that starts a TCP server.
 // Data for starting the server is taken from the game config.
@@ -31,21 +34,45 @@ func Start() {
 			continue
 		}
 
+		addClientToList(conn.RemoteAddr().String())
+
 		go handleRequest(conn)
 	}
 }
 
-// Handles incoming requests.
+func addClientToList(host string) {
+	if _, ok := servicedata.TCPClients[host]; ok {
+		return
+	}
+
+	servicedata.TCPClients[host] = 10
+}
+
+func deleteClientFromList(host string) {
+	if _, ok := servicedata.TCPClients[host]; !ok {
+		return
+	}
+
+	delete(servicedata.TCPClients, host)
+}
+
 func handleRequest(conn net.Conn) {
-	// Make a buffer to hold incoming data.
-	buf := make([]byte, 1024)
-	// Read the incoming connection into the buffer.
+	host := conn.RemoteAddr().String()
+	buf := make([]byte, BufferSize)
 	_, err := conn.Read(buf)
 	if err != nil {
-		fmt.Println("Error reading:", err.Error())
+		if err == io.EOF {
+			logger.Notice(LC + "Client has been disconnected")
+			deleteClientFromList(host)
+			conn.Close()
+			return
+		}
+
+		logger.Error(LC + "An error occurred while receiving data from the client: " + err.Error())
+		deleteClientFromList(host)
+		conn.Close()
+		return
 	}
-	// Send a response back to person contacting us.
-	conn.Write([]byte("Message received."))
-	// Close the connection when you're done with it.
-	conn.Close()
+
+	conn.Write([]byte("OK"))
 }

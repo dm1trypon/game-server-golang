@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/dm1trypon/game-server/config"
+	"github.com/dm1trypon/game-server-golang/config"
 	"github.com/ivahaev/go-logger"
 )
 

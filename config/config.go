@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/dm1trypon/game-server/servicedata"
+	"github.com/dm1trypon/game-server-golang/servicedata"
 	"github.com/ivahaev/go-logger"
 	"github.com/qri-io/jsonschema"
 )
