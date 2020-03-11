@@ -8,12 +8,20 @@ type Net struct {
 
 // Game struct contains game's setting
 type Game struct {
-	FPS        int `json:"fps"`
-	MaxPlayers int `json:"max_players"`
+	Timers     Timers `json:"timers"`
+	MaxPlayers int    `json:"max_players"`
+}
+
+// Timers struct contains game's objects timers
+type Timers struct {
+	FPS       int `json:"fps"`
+	SpeedCalc int `json:"speed_calc"`
+	Second    int `json:"second"`
 }
 
 // Player struct contains base player's setting
 type Player struct {
+	SpeedCalc  int    `json:"speed_calc"`
 	Width      int    `json:"width"`
 	Height     int    `json:"height"`
 	Speed      int    `json:"speed"`

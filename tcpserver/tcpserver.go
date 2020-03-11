@@ -34,45 +34,56 @@ func Start() {
 			continue
 		}
 
-		addClientToList(conn.RemoteAddr().String())
+		addClientToList(conn)
 
 		go handleRequest(conn)
 	}
 }
 
-func addClientToList(host string) {
-	if _, ok := servicedata.TCPClients[host]; ok {
+func addClientToList(conn net.Conn) {
+	if _, ok := servicedata.TCPClients[conn]; ok {
 		return
 	}
 
-	servicedata.TCPClients[host] = 10
+	servicedata.TCPClients[conn] = 10
 }
 
-func deleteClientFromList(host string) {
-	if _, ok := servicedata.TCPClients[host]; !ok {
+// DeleteClientFromList - a method that deletes a client connected to a TCP server.
+func DeleteClientFromList(conn net.Conn) {
+	if _, ok := servicedata.TCPClients[conn]; !ok {
 		return
 	}
 
-	delete(servicedata.TCPClients, host)
+	delete(servicedata.TCPClients, conn)
+	conn.Close()
 }
 
 func handleRequest(conn net.Conn) {
-	host := conn.RemoteAddr().String()
-	buf := make([]byte, BufferSize)
-	_, err := conn.Read(buf)
-	if err != nil {
-		if err == io.EOF {
-			logger.Notice(LC + "Client has been disconnected")
-			deleteClientFromList(host)
-			conn.Close()
+	for {
+		if _, ok := servicedata.TCPClients[conn]; !ok {
+			logger.Warn(LC + "TCP " + conn.RemoteAddr().String() + " client has been disconnected")
+			break
+		}
+
+		buf := make([]byte, BufferSize)
+		_, err := conn.Read(buf)
+		if err != nil {
+			if _, ok := err.(*net.OpError); ok {
+				// Do something with oerr.Err
+			}
+
+			if err == io.EOF {
+				logger.Notice(LC + "Client has been disconnected")
+				DeleteClientFromList(conn)
+				return
+			}
+
+			logger.Error(LC + "An error occurred while receiving data from the client: " + err.Error())
+			DeleteClientFromList(conn)
 			return
 		}
 
-		logger.Error(LC + "An error occurred while receiving data from the client: " + err.Error())
-		deleteClientFromList(host)
-		conn.Close()
-		return
+		logger.Info(LC + "RECV: " + string(buf))
+		conn.Write([]byte("OK\n"))
 	}
-
-	conn.Write([]byte("OK"))
 }

@@ -17,16 +17,30 @@
         "game": {
             "type": "object",
             "properties": {
-                "fps": {
-                    "type": "integer",
-                    "minimum": 5
+                "timers": {
+                    "type": "object",
+                    "properties": {
+                        "fps": {
+                            "type": "integer",
+                            "minimum": 17
+                        },
+                        "speed_calc": {
+                            "type": "integer",
+                            "minimum": 100
+                        },
+                        "second": {
+                            "type": "integer",
+                            "minimum": 1000
+                        }
+                    },
+                    "required": ["fps", "speed_calc", "second"]
                 },
                 "max_players": {
                     "type": "integer",
                     "minimum": 2
                 }
             },
-            "required": ["fps", "max_players"]
+            "required": ["timers", "max_players"]
         },
         "game_objects": {
             "type": "object",
@@ -62,7 +76,7 @@
                             "minimum": 0
                         }
                     },
-                    "required": ["width", "height", "speed", "weapon","cartridges", "health", "armor"]
+                    "required": ["width", "height", "speed", "weapon", "cartridges", "health", "armor"]
                 },
                 "bullets": {
                     "type": "array",
