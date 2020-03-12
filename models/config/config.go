@@ -1,4 +1,4 @@
-package models
+package config
 
 // Net struct contains settings of server's ports
 type Net struct {

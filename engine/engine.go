@@ -1,8 +1,10 @@
 package engine
 
 import (
+	"math"
 	"time"
 
+	"github.com/dm1trypon/game-server-golang/models/player"
 	"github.com/dm1trypon/game-server-golang/servicedata"
 	"github.com/dm1trypon/game-server-golang/tcpserver"
 	"github.com/ivahaev/go-logger"
@@ -52,10 +54,63 @@ func Start() {
 
 func onFPS() {
 	logger.Info("fps")
+	for _, player := range servicedata.Base.Players {
+		player.Position.X += player.Speed.X
+		player.Position.Y += player.Speed.Y
+	}
+
+	for _, bullet := range servicedata.Base.Bullets {
+		bullet.Position.X += bullet.Speed.X
+		bullet.Position.Y += bullet.Speed.Y
+	}
 }
 
 func onSpeedCalc() {
 	logger.Info("speedCalc")
+
+	playersByName := make(map[string]*player.Player)
+
+	for _, player := range servicedata.Base.Players {
+		playersByName[player.Nickname] = &player
+	}
+
+	for nickname, keys := range servicedata.PlayersPressedKeys {
+		if _, ok := playersByName[nickname]; !ok {
+			continue
+		}
+
+		speedMax := playersByName[nickname].Speed.Max
+		speedX := int(math.Abs(float64(playersByName[nickname].Speed.X)))
+		speedY := int(math.Abs(float64(playersByName[nickname].Speed.Y)))
+
+		for _, key := range keys {
+			if key == "up" {
+				if speedMax <= speedY {
+					continue
+				}
+
+				playersByName[nickname].Speed.Y++
+			} else if key == "down" {
+				if speedMax <= speedY {
+					continue
+				}
+
+				playersByName[nickname].Speed.Y--
+			} else if key == "left" {
+				if speedMax <= speedX {
+					continue
+				}
+
+				playersByName[nickname].Speed.X++
+			} else if key == "right" {
+				if speedMax <= speedX {
+					continue
+				}
+
+				playersByName[nickname].Speed.X--
+			}
+		}
+	}
 }
 
 func setTimersTCPClients() {
