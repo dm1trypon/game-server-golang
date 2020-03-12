@@ -1,7 +1,6 @@
 package tcpserver
 
 import (
-	"io"
 	"net"
 	"os"
 
@@ -69,10 +68,6 @@ func handleRequest(conn net.Conn) {
 		_, err := conn.Read(buf)
 		if err != nil {
 			if _, ok := err.(*net.OpError); ok {
-				// Do something with oerr.Err
-			}
-
-			if err == io.EOF {
 				logger.Notice(LC + "Client has been disconnected")
 				DeleteClientFromList(conn)
 				return

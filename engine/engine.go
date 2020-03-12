@@ -11,42 +11,55 @@ import (
 // LC - Logging category
 const LC = "[Engine] >> "
 
+var tickers map[string]time.Ticker
+
 // Start - a method that starts the main processing cycle of object timers.
 func Start() {
 	logger.Notice(LC + "Starting engine")
 
-	fpsTick := 0
-	secondTick := 0
-	speedCalcTick := 0
+	tickers = make(map[string]time.Ticker)
 
 	fps := servicedata.GameConfig.Game.Timers.FPS
 	second := servicedata.GameConfig.Game.Timers.Second
 	speedCalc := servicedata.GameConfig.Game.Timers.SpeedCalc
 
-	// Main loop
-	for {
-		if fpsTick == fps {
-			fpsTick = -1
-		}
+	// Init timers
+	tickers["fps"] = *time.NewTicker(time.Duration(fps) * time.Millisecond)
+	tickers["speedCalc"] = *time.NewTicker(time.Duration(speedCalc) * time.Millisecond)
+	tickers["second"] = *time.NewTicker(time.Duration(second) * time.Millisecond)
 
-		if speedCalcTick == speedCalc {
-			speedCalcTick = -1
-		}
+	for typeTimer, ticker := range tickers {
+		done := make(chan bool)
 
-		if secondTick == second {
-			setTimersTCPClients()
-			secondTick = -1
-		}
-
-		fpsTick++
-		secondTick++
-		speedCalcTick++
-
-		time.Sleep(time.Millisecond)
+		go func(ticker time.Ticker, typeTimer string) {
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					if typeTimer == "fps" {
+						onFPS()
+					} else if typeTimer == "speedCalc" {
+						onSpeedCalc()
+					} else if typeTimer == "second" {
+						setTimersTCPClients()
+					}
+				}
+			}
+		}(ticker, typeTimer)
 	}
 }
 
+func onFPS() {
+	logger.Info("fps")
+}
+
+func onSpeedCalc() {
+	logger.Info("speedCalc")
+}
+
 func setTimersTCPClients() {
+	logger.Info(LC + "tick")
 	for conn := range servicedata.TCPClients {
 		servicedata.TCPClients[conn]--
 
