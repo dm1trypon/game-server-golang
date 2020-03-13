@@ -25,6 +25,9 @@ var Base base.Base
 // PlayersPressedKeys - a map containing an array of player keys pressed.
 var PlayersPressedKeys map[string][]string
 
+// BufPlayersPressedKeys - buffer a map containing an array of player keys pressed.
+var BufPlayersPressedKeys map[string][]string
+
 // Init - a method that initializes service variables
 func Init() {
 	TCPClients = make(map[net.Conn]int)
@@ -38,4 +41,5 @@ func Init() {
 	}
 
 	PlayersPressedKeys = make(map[string][]string)
+	BufPlayersPressedKeys = make(map[string][]string)
 }

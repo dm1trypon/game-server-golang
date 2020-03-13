@@ -79,6 +79,10 @@ func onSpeedCalc() {
 			continue
 		}
 
+		if _, ok := playersByName[nickname]; !ok {
+			continue
+		}
+
 		speedMax := playersByName[nickname].Speed.Max
 		speedX := int(math.Abs(float64(playersByName[nickname].Speed.X)))
 		speedY := int(math.Abs(float64(playersByName[nickname].Speed.Y)))
@@ -108,6 +112,18 @@ func onSpeedCalc() {
 				}
 
 				playersByName[nickname].Speed.X--
+			} else {
+				if speedX < 0 {
+					speedX++
+				} else if speedX > 0 {
+					speedX--
+				}
+
+				if speedY < 0 {
+					speedY++
+				} else if speedY > 0 {
+					speedY--
+				}
 			}
 		}
 	}
