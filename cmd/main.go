@@ -20,7 +20,7 @@ func setupCloseHandler() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP)
 	go func() {
 		<-c
-		logger.Notice(LC + "<<< STOPING SERVICE >>>")
+		logger.Notice(LC + "<<< STOPPING SERVICE >>>")
 		os.Exit(0)
 	}()
 }
