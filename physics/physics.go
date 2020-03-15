@@ -10,7 +10,9 @@ import (
 // LC - Logging category
 const LC = "[Physics] >> "
 
-var directions = [4]string{"left", "right", "up", "down"}
+var orientations = [4]string{"horizontal", "vertical"}
+var hDirections = [2]string{"left", "right"}
+var vDirections = [2]string{"up", "down"}
 
 // PlayerControl is a method that is responsible for managing a player’s object.
 func PlayerControl(player *player.Player, keys []string) {
@@ -18,8 +20,17 @@ func PlayerControl(player *player.Player, keys []string) {
 	onBraking(player, keys, isPressedVertical, isPressedHorizontal)
 }
 
-func getMissedKeys(keys []string) []string {
-	var missedKeys []string
+func isBrakingOrientation(orientation string, keys []string) bool {
+	var directions [2]string
+
+	if orientation == "horizontal" {
+		directions = hDirections
+	} else if orientation == "vertical" {
+		directions = vDirections
+	} else {
+		logger.Warn("Unknown braking direction")
+		return false
+	}
 
 	for _, direction := range directions {
 		isExist := false
@@ -32,11 +43,25 @@ func getMissedKeys(keys []string) []string {
 		}
 
 		if !isExist {
-			missedKeys = append(missedKeys, direction)
+			return true
+		}
+
+		break
+	}
+
+	return false
+}
+
+func getBrakingOrientations(keys []string) []string {
+	var brakingOrientations []string
+
+	for _, orientation := range orientations {
+		if isBrakingOrientation(orientation, keys) {
+			brakingOrientations = append(brakingOrientations, orientation)
 		}
 	}
 
-	return missedKeys
+	return brakingOrientations
 }
 
 func onRacing(player *player.Player, keys []string) (bool, bool) {
@@ -52,12 +77,13 @@ func onRacing(player *player.Player, keys []string) (bool, bool) {
 }
 
 func onBraking(player *player.Player, keys []string, isPressedVertical bool, isPressedHorizontal bool) {
-	missedKeys := getMissedKeys(keys)
-	for _, key := range missedKeys {
-		if isBrakeVertical(key, isPressedVertical) {
-			braking(player, "vertical")
-		} else if isBrakeHorizonatal(key, isPressedHorizontal) {
-			braking(player, "horizontal")
+	brakingOrientations := getBrakingOrientations(keys)
+
+	for _, orientation := range brakingOrientations {
+		if !isPressedVertical {
+			braking(player, orientation)
+		} else if !isPressedHorizontal {
+			braking(player, orientation)
 		}
 	}
 }
@@ -101,15 +127,17 @@ func racing(player *player.Player, key string, isPressedVertical bool, isPressed
 	return isPressedHorizontal, isPressedVertical
 }
 
-func braking(player *player.Player, direction string) {
+func braking(player *player.Player, orientation string) {
 	speed := 0
 	isHorizontal := false
 	isVertical := false
 
-	if direction == "horizontal" {
+	if orientation == "horizontal" {
 		speed = player.Speed.X
-	} else if direction == "vertical" {
+		isHorizontal = true
+	} else if orientation == "vertical" {
 		speed = player.Speed.Y
+		isVertical = true
 	} else {
 		logger.Warn(LC + "Unknown braking direction")
 		return
@@ -121,12 +149,10 @@ func braking(player *player.Player, direction string) {
 
 	if speed > 0 {
 		speed--
-		return
 	}
 
 	if speed < 0 {
 		speed++
-		return
 	}
 
 	if isHorizontal {
@@ -138,12 +164,4 @@ func braking(player *player.Player, direction string) {
 		player.Speed.Y = speed
 		return
 	}
-}
-
-func isBrakeVertical(key string, isPressedVertical bool) bool {
-	return (key == "up" || key == "down") && !isPressedVertical
-}
-
-func isBrakeHorizonatal(key string, isPressedHorizontal bool) bool {
-	return (key == "left" || key == "right") && !isPressedHorizontal
 }
