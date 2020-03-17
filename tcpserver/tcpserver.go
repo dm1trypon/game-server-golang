@@ -1,11 +1,14 @@
 package tcpserver
 
 import (
+	"bytes"
 	"net"
 	"os"
 
 	"github.com/ivahaev/go-logger"
 
+	"github.com/dm1trypon/game-server-golang/engine"
+	"github.com/dm1trypon/game-server-golang/manager"
 	"github.com/dm1trypon/game-server-golang/servicedata"
 )
 
@@ -47,16 +50,6 @@ func addClientToList(conn net.Conn) {
 	servicedata.TCPClients[conn] = 10
 }
 
-// DeleteClientFromList - a method that deletes a client connected to a TCP server.
-func DeleteClientFromList(conn net.Conn) {
-	if _, ok := servicedata.TCPClients[conn]; !ok {
-		return
-	}
-
-	delete(servicedata.TCPClients, conn)
-	conn.Close()
-}
-
 func handleRequest(conn net.Conn) {
 	for {
 		if _, ok := servicedata.TCPClients[conn]; !ok {
@@ -69,16 +62,21 @@ func handleRequest(conn net.Conn) {
 		if err != nil {
 			if _, ok := err.(*net.OpError); ok {
 				logger.Notice(LC + "Client has been disconnected")
-				DeleteClientFromList(conn)
+				engine.DeleteClientFromList(conn)
 				return
 			}
 
 			logger.Error(LC + "An error occurred while receiving data from the client: " + err.Error())
-			DeleteClientFromList(conn)
+			engine.DeleteClientFromList(conn)
 			return
 		}
 
+		buf = bytes.Trim(buf, "\x00")
+		buf = bytes.Trim(buf, "\n\t")
+
 		logger.Info(LC + "RECV: " + string(buf))
-		conn.Write([]byte("OK\n"))
+		manager.OnTCPMessage(buf, conn)
+
+		// conn.Write([]byte("OK\n"))
 	}
 }

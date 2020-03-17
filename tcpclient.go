@@ -13,7 +13,7 @@ import (
 var KEYS = []string{"left", "right", "up", "down"}
 
 func main() {
-	conn, err := net.Dial("tcp", "10.23.0.59:3001")
+	conn, err := net.Dial("tcp", "127.0.0.1:3001")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -28,7 +28,7 @@ func main() {
 		}
 
 		if step == 1 {
-			fmt.Fprintf(conn, `{"method":"init_tcp","nickname":"playernickname","resolution":{"width":1280,"height":720}}`+"\n")
+			fmt.Fprintf(conn, "{\"method\":\"init_tcp\",\"nickname\":\"playernickname\",\"resolution\":{\"width\":1280,\"height\":720}}\n")
 			step = 2
 		}
 

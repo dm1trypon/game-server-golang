@@ -175,4 +175,4 @@
         }
     },
     "required": ["net", "game", "game_objects"]
-  }
+}

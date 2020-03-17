@@ -52,7 +52,7 @@ type Keyboard struct {
 type Response struct {
 	Method  string `json:"method"`
 	Message string `json:"message"`
-	Status  bool   `json:"status"`
+	Success bool   `json:"success"`
 }
 
 // UDPNetData struct contains UDP's connection's data

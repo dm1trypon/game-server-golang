@@ -1,19 +1,29 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"time"
+	"reflect"
 )
 
 func main() {
 
-	messages := make(chan string)
+	byt := []byte(`{"num":"6.13","strs":["a","b"]}`)
+	var dat map[string]interface{}
 
-	go func() {
-		time.Sleep(2 * time.Second)
-		messages <- "ping"
-	}()
+	if err := json.Unmarshal(byt, &dat); err != nil {
+		panic(err)
+	}
 
-	msg := <-messages
-	fmt.Println(msg)
+	if dat["num"] == nil {
+		fmt.Println("Is nil")
+		return
+	}
+
+	if reflect.TypeOf(dat["num"]).String() == "string" {
+		fmt.Println("Is string")
+		return
+	}
+
+	fmt.Println(dat["num"].(string))
 }
