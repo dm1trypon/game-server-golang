@@ -19,9 +19,6 @@ import (
 // LC - Logging category
 const LC = "[Engine] >> "
 
-// TCPSchemaPath - path to TCP's schema
-const TCPSchemaPath = "../schemas/tcp_data.schema.json"
-
 var tickers map[string]time.Ticker
 
 // mutex is used to prevent the error of competitive sending messages from the web socket.
@@ -65,20 +62,56 @@ func Start() error {
 	return nil
 }
 
+// InitUDPClient - a method that initializes a client connected via a UDP socket.
+func InitUDPClient(connAddr net.UDPAddr, UUID string) error {
+	connData := servicedata.GetConnDataByUUID(UUID)
+	if connData == nil {
+		errText := "Can not find a connation's data by UUID, TCP connection must be first created"
+		logger.Warn(LC + errText)
+		return errors.New(errText)
+	}
+
+	logger.Warn(connData.UDPAddr.IP)
+
+	if connData.UDPAddr.IP != nil {
+		errText := "UDP client with this address already connected"
+		logger.Warn(LC + errText)
+		return errors.New(errText)
+	}
+
+	if connData.TimeDisc != -1 {
+		errText := "TCP client not yet authorized"
+		logger.Warn(LC + errText)
+		return errors.New(errText)
+	}
+
+	connData.UDPAddr = connAddr
+
+	return nil
+}
+
 // InitTCPClient - a method that initializes a client connected via a TCP socket.
 func InitTCPClient(initTCP client.InitTCP, conn net.Conn) error {
 	players := servicedata.Base.Players
+	nickname := ""
 
 	for _, player := range players {
 		if player.Nickname == initTCP.Nickname {
-			err := errors.New("Player " + player.Nickname + " already exists")
+			nickname = player.Nickname
+			err := errors.New("Player " + nickname + " already exists")
 			return err
 		}
 	}
 
 	newPlayer(initTCP)
 
-	servicedata.TCPClients[conn] = -1
+	connData := servicedata.GetConnData(conn)
+	if connData == nil {
+		err := errors.New("Player " + nickname + " has't connection")
+		return err
+	}
+
+	connData.TimeDisc = -1
 	return nil
 }
 
@@ -152,6 +185,12 @@ func onFPS() {
 		bullet.Position.X += bullet.Speed.X
 		bullet.Position.Y += bullet.Speed.Y
 	}
+
+	for _, connData := range servicedata.ConnectedClients {
+		if connData.UDPAddr.String() != "" {
+			servicedata.UDPConn.WriteToUDP([]byte(""), &connData.UDPAddr)
+		}
+	}
 }
 
 func onSpeedCalc() {
@@ -171,23 +210,13 @@ func onSpeedCalc() {
 	}
 }
 
-// DeleteClientFromList - a method that deletes a client connected to a TCP server.
-func DeleteClientFromList(conn net.Conn) {
-	if _, ok := servicedata.TCPClients[conn]; !ok {
-		return
-	}
-
-	delete(servicedata.TCPClients, conn)
-	conn.Close()
-}
-
 func setTimersTCPClients() {
-	for conn := range servicedata.TCPClients {
-		servicedata.TCPClients[conn]--
+	for _, connData := range servicedata.ConnectedClients {
+		connData.TimeDisc--
 
-		if servicedata.TCPClients[conn] == 0 {
-			logger.Info(LC + conn.RemoteAddr().String() + ": Timer expired!")
-			DeleteClientFromList(conn)
+		if connData.TimeDisc == 0 {
+			logger.Info(LC + connData.TCPConnect.RemoteAddr().String() + ": Timer expired!")
+			servicedata.DelConnData(connData.TCPConnect)
 		}
 	}
 }

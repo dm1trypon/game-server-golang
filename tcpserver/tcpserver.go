@@ -7,7 +7,6 @@ import (
 
 	"github.com/ivahaev/go-logger"
 
-	"github.com/dm1trypon/game-server-golang/engine"
 	"github.com/dm1trypon/game-server-golang/manager"
 	"github.com/dm1trypon/game-server-golang/servicedata"
 )
@@ -36,23 +35,15 @@ func Start() {
 			continue
 		}
 
-		addClientToList(conn)
+		servicedata.AddConnData(conn)
 
 		go handleRequest(conn)
 	}
 }
 
-func addClientToList(conn net.Conn) {
-	if _, ok := servicedata.TCPClients[conn]; ok {
-		return
-	}
-
-	servicedata.TCPClients[conn] = 10
-}
-
 func handleRequest(conn net.Conn) {
 	for {
-		if _, ok := servicedata.TCPClients[conn]; !ok {
+		if servicedata.GetConnData(conn) == nil {
 			logger.Warn(LC + "TCP " + conn.RemoteAddr().String() + " client has been disconnected")
 			break
 		}
@@ -62,12 +53,12 @@ func handleRequest(conn net.Conn) {
 		if err != nil {
 			if _, ok := err.(*net.OpError); ok {
 				logger.Notice(LC + "Client has been disconnected")
-				engine.DeleteClientFromList(conn)
+				servicedata.DelConnData(conn)
 				return
 			}
 
 			logger.Error(LC + "An error occurred while receiving data from the client: " + err.Error())
-			engine.DeleteClientFromList(conn)
+			servicedata.DelConnData(conn)
 			return
 		}
 

@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/dm1trypon/game-server-golang/config"
+	"github.com/dm1trypon/game-server-golang/engine"
+	"github.com/dm1trypon/game-server-golang/models/client"
 	"github.com/dm1trypon/game-server-golang/servicedata"
 )
 
@@ -76,7 +78,7 @@ func TestOnTCPMessage(t *testing.T) {
 	}
 
 	servicedata.Init()
-	servicedata.TCPClients[conn] = 10
+	servicedata.AddConnData(conn)
 
 	for _, result := range results {
 		msg := string(OnTCPMessage([]byte(result.input), conn))
@@ -84,4 +86,56 @@ func TestOnTCPMessage(t *testing.T) {
 			t.Error("Expected "+result.output+", got ", msg)
 		}
 	}
+}
+
+func TestOnUDPMessage(t *testing.T) {
+	net.Listen("tcp", "127.0.0.1:3333")
+	conn, _ := net.Dial("tcp", "127.0.0.1:3333")
+
+	if !config.IsValidConfig("../config.json", "../config.schema.json") {
+		t.Error("Config is invalid")
+	}
+
+	servicedata.Init()
+	servicedata.AddConnData(conn)
+
+	connData := servicedata.GetConnData(conn)
+	if connData == nil {
+		t.Error("ConnData is nil")
+		return
+	}
+
+	initTCP := client.InitTCP{
+		Nickname: "FreeMan",
+		Method:   "init_tcp",
+		Resolution: client.Resolution{
+			Width:  1920,
+			Height: 1080,
+		},
+	}
+
+	engine.InitTCPClient(initTCP, conn)
+
+	uuid := connData.UUID
+
+	results := []JSON{
+		JSON{
+			input:  "{\"method\":\"init_udp\",\"nickname\":\"FreeMan\",\"uuid\":\"" + uuid + "\"}",
+			output: "{\"method\":\"error\",\"message\":\"127.0.0.1:3333 is unautorized\",\"success\":false}",
+		},
+		JSON{
+			input:  "{\"method\":\"init_udp\",\"nickname\":\"FreeMan\",\"uuid\":\"" + uuid + "\"}",
+			output: "UDP client with this address already connected",
+		},
+	}
+
+	for _, result := range results {
+		err := OnUDPMessage([]byte(result.input), connData.UDPAddr)
+		if err != nil && err.Error() != result.output {
+			t.Error("Expected "+result.output+", got ", err.Error())
+		} else {
+			connData.UDPAddr.IP = []byte("1x0012321")
+		}
+	}
+
 }

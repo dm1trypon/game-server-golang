@@ -71,6 +71,8 @@ func Start() {
 	}
 	defer udpConn.Close()
 
+	servicedata.UDPConn = udpConn
+
 	logger.Notice(LC + "UDP game server has been started on " + path)
 
 	var wgSender sync.WaitGroup

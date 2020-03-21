@@ -7,9 +7,8 @@ import (
 	"reflect"
 
 	"github.com/dm1trypon/game-server-golang/engine"
-	"github.com/dm1trypon/game-server-golang/servicedata"
-
 	"github.com/dm1trypon/game-server-golang/models/client"
+	"github.com/dm1trypon/game-server-golang/servicedata"
 
 	"github.com/ivahaev/go-logger"
 )
@@ -20,11 +19,12 @@ const LC = "[Manager] >> "
 // OnTCPMessage - a method that works when a message is received from
 // the game client via a TCP socket, parsing and returning data.
 func OnTCPMessage(msg []byte, conn net.Conn) []byte {
-	if _, ok := servicedata.TCPClients[conn]; !ok {
+	connData := servicedata.GetConnData(conn)
+	if connData == nil {
 		return warningNotify("error", "Internal error")
 	}
 
-	time := servicedata.TCPClients[conn]
+	time := connData.TimeDisc
 
 	var data map[string]interface{}
 
@@ -42,11 +42,9 @@ func OnTCPMessage(msg []byte, conn net.Conn) []byte {
 
 	method := data["method"].(string)
 	if method == "init_tcp" {
-		return onTCPInit(msg, conn)
+		return onTCPInit(msg, connData)
 	} else if time > 0 {
 		return warningNotify("error", conn.RemoteAddr().String()+" is unautorized")
-	} else if method == "init_udp" {
-		return onUDPInit()
 	} else if method == "mouse" {
 		return onMouse()
 	} else if method == "keyboard" {
@@ -54,6 +52,53 @@ func OnTCPMessage(msg []byte, conn net.Conn) []byte {
 	}
 
 	return warningNotify("error", "Method \""+method+"\" is unsupported")
+}
+
+// OnUDPMessage - a method that works when a message is received from
+// the game client via a UDP socket, parsing and working with data.
+func OnUDPMessage(msg []byte, udpAddr net.UDPAddr) error {
+	var data map[string]interface{}
+
+	if err := json.Unmarshal(msg, &data); err != nil {
+		logger.Warn(LC + err.Error())
+		return err
+	}
+
+	if data["method"] == nil {
+		errText := "Method is null"
+		logger.Warn(LC + errText)
+		return errors.New(errText)
+	}
+
+	if reflect.TypeOf(data["method"]).String() != "string" {
+		errText := "Method is not a string"
+		logger.Warn(LC + errText)
+		return errors.New(errText)
+	}
+
+	method := data["method"].(string)
+
+	if method != "init_udp" {
+		errText := "Method \"" + method + "\" is unsupported"
+		logger.Warn(LC + errText)
+		return errors.New(errText)
+	}
+
+	if data["uuid"] == nil {
+		errText := "Uuid is null"
+		logger.Warn(LC + errText)
+		return errors.New(errText)
+	}
+
+	if reflect.TypeOf(data["uuid"]).String() != "string" {
+		errText := "Uuid is not a string"
+		logger.Warn(LC + errText)
+		return errors.New(errText)
+	}
+
+	UUID := data["uuid"].(string)
+
+	return engine.InitUDPClient(udpAddr, UUID)
 }
 
 func warningNotify(method string, errText string) []byte {
@@ -67,7 +112,7 @@ func warningNotify(method string, errText string) []byte {
 	return response
 }
 
-func onTCPInit(msg []byte, conn net.Conn) []byte {
+func onTCPInit(msg []byte, connData *servicedata.ConnectedData) []byte {
 	initTCP := client.InitTCP{
 		Nickname: "",
 		Method:   "",
@@ -85,11 +130,11 @@ func onTCPInit(msg []byte, conn net.Conn) []byte {
 		return warningNotify("init_tcp", err.Error())
 	}
 
-	if err := engine.InitTCPClient(initTCP, conn); err != nil {
+	if err := engine.InitTCPClient(initTCP, connData.TCPConnect); err != nil {
 		return warningNotify("init_tcp", err.Error())
 	}
 
-	servicedata.TCPClients[conn] = -1
+	connData.TimeDisc = -1
 
 	response, _ := makeResponse(true, "init_tcp", "OK")
 	return response
@@ -109,10 +154,6 @@ func checkBodyTCPInitJSON(initTCP client.InitTCP) error {
 	}
 
 	return nil
-}
-
-func onUDPInit() []byte {
-	return []byte("")
 }
 
 func onMouse() []byte {
