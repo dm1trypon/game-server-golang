@@ -120,12 +120,32 @@ func TestOnUDPMessage(t *testing.T) {
 
 	results := []JSON{
 		JSON{
+			input:  "\"nickname\":\"FreeMan\",\"uuid\":\"" + uuid + "\"}",
+			output: "invalid character ':' after top-level value",
+		},
+		JSON{
+			input:  "{\"nickname\":\"FreeMan\",\"uuid\":\"" + uuid + "\"}",
+			output: "Method is null",
+		},
+		JSON{
+			input:  "{\"method\":123,\"nickname\":\"FreeMan\",\"uuid\":\"" + uuid + "\"}",
+			output: "Method is not a string",
+		},
+		JSON{
 			input:  "{\"method\":\"init_udp\",\"nickname\":\"FreeMan\",\"uuid\":\"" + uuid + "\"}",
-			output: "{\"method\":\"error\",\"message\":\"127.0.0.1:3333 is unautorized\",\"success\":false}",
+			output: "",
 		},
 		JSON{
 			input:  "{\"method\":\"init_udp\",\"nickname\":\"FreeMan\",\"uuid\":\"" + uuid + "\"}",
 			output: "UDP client with this address already connected",
+		},
+		JSON{
+			input:  "{\"method\":\"init_udp\",\"nickname\":\"FreeMan\",\"uuid\":123}",
+			output: "Uuid is not a string",
+		},
+		JSON{
+			input:  "{\"method\":\"init_udp\",\"nickname\":\"FreeMan\"}",
+			output: "Uuid is null",
 		},
 	}
 
@@ -133,9 +153,10 @@ func TestOnUDPMessage(t *testing.T) {
 		err := OnUDPMessage([]byte(result.input), connData.UDPAddr)
 		if err != nil && err.Error() != result.output {
 			t.Error("Expected "+result.output+", got ", err.Error())
-		} else {
+		}
+
+		if err == nil {
 			connData.UDPAddr.IP = []byte("1x0012321")
 		}
 	}
-
 }
