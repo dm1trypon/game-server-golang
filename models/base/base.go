@@ -10,9 +10,9 @@ import (
 
 // Base game protocol
 type Base struct {
-	Players []player.Player `json:"players"`
-	Bullets []bullet.Bullet `json:"bullets"`
-	Effects []effect.Effect `json:"effects"`
-	Scene   scene.Scene     `json:"scene"`
-	Blocks  []block.Block   `json:"blocks"`
+	Players []*player.Player `json:"players"`
+	Bullets []*bullet.Bullet `json:"bullets"`
+	Effects []*effect.Effect `json:"effects"`
+	Scene   scene.Scene      `json:"scene"`
+	Blocks  []*block.Block   `json:"blocks"`
 }

@@ -71,8 +71,6 @@ func InitUDPClient(connAddr net.UDPAddr, UUID string) error {
 		return errors.New(errText)
 	}
 
-	logger.Warn(connData.UDPAddr.IP)
-
 	if connData.UDPAddr.IP != nil {
 		errText := "UDP client with this address already connected"
 		logger.Warn(LC + errText)
@@ -168,7 +166,7 @@ func newPlayer(initTCP client.InitTCP) {
 	}
 
 	mutex.Lock()
-	servicedata.Base.Players = append(servicedata.Base.Players, player)
+	servicedata.Base.Players = append(servicedata.Base.Players, &player)
 	mutex.Unlock()
 
 	logger.Notice(LC + "New player has been created: {\"nickname\": \"" + player.Nickname + "\"," +
@@ -177,6 +175,7 @@ func newPlayer(initTCP client.InitTCP) {
 
 func onFPS() {
 	for _, player := range servicedata.Base.Players {
+		logger.Info(LC + "Position: [" + strconv.Itoa(player.Position.X) + ":" + strconv.Itoa(player.Position.Y) + "]")
 		player.Position.X += player.Speed.X
 		player.Position.Y += player.Speed.Y
 	}
@@ -197,7 +196,7 @@ func onSpeedCalc() {
 	playersByName := make(map[string]*player.Player)
 
 	for _, player := range servicedata.Base.Players {
-		playersByName[player.Nickname] = &player
+		playersByName[player.Nickname] = player
 	}
 
 	for nickname, keys := range servicedata.PlayersPressedKeys {

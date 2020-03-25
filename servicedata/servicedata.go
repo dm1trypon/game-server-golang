@@ -50,11 +50,11 @@ var PlayersPressedKeys map[string][]string
 // Init - a method that initializes service variables
 func Init() {
 	Base = base.Base{
-		Players: []player.Player{},
-		Effects: []effect.Effect{},
-		Bullets: []bullet.Bullet{},
+		Players: []*player.Player{},
+		Effects: []*effect.Effect{},
+		Bullets: []*bullet.Bullet{},
 		Scene:   scene.Scene{},
-		Blocks:  []block.Block{},
+		Blocks:  []*block.Block{},
 	}
 
 	PlayersPressedKeys = make(map[string][]string)

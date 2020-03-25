@@ -28,6 +28,11 @@ func Start() {
 	}
 	defer listener.Close()
 	logger.Notice(LC + "TCP Server listening on " + TCPPath)
+
+	listenHandler(listener)
+}
+
+func listenHandler(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {

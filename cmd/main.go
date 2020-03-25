@@ -3,12 +3,14 @@ package main
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/dm1trypon/game-server-golang/config"
 	"github.com/dm1trypon/game-server-golang/engine"
 	"github.com/dm1trypon/game-server-golang/servicedata"
 	"github.com/dm1trypon/game-server-golang/tcpserver"
+	"github.com/dm1trypon/game-server-golang/udpserver"
 	"github.com/ivahaev/go-logger"
 )
 
@@ -35,5 +37,13 @@ func main() {
 
 	servicedata.Init()
 	engine.Start()
-	tcpserver.Start()
+	go tcpserver.Start()
+
+	var wgUDPServer sync.WaitGroup
+	wgUDPServer.Add(1)
+	go func(wgUDPServer *sync.WaitGroup) {
+		defer wgUDPServer.Done()
+		udpserver.Start()
+	}(&wgUDPServer)
+	wgUDPServer.Wait()
 }
